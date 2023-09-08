@@ -1,0 +1,28 @@
+{
+	"resourceType": "https://yal-tools.github.io/vial-to-keymap-drawer/",
+	"fields": {
+		"keyboard": "splitkb/aurora/sofle_v2/rev1",
+		"layout": "",
+		"half-after-half": true,
+		"mirror-right-half": true,
+		"move-defs": [
+			"4,5 => 3,6",
+			"9,5 => 8,6"
+		],
+		"layer-names": [
+			"DEF",
+			"DIGITS (reverts digits to normal configuration)",
+			"NAV",
+			"MISC: F-keys and numpad"
+		],
+		"key-overrides": [
+			"0,0,1 => \\ !",
+			"0,0,2 => @ (",
+			"0,0,3 => # )",
+			"0,0,4 => $ |",
+			"0,0,5 => % &",
+			"0,5,5 => ^ *",
+			"2,2,5 => TG UA"
+		]
+	}
+}

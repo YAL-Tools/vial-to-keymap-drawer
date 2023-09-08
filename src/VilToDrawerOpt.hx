@@ -19,6 +19,7 @@ class VilToDrawerOpt {
 	public var mirrorRightHalf = false;
 	public var layerNames:Array<VilToDrawerLayerName> = [];
 	public var moveDefs:Array<VilToDrawerMoveDef> = [];
+	public var keyOverrides:Array<VilToDrawerKeyOverride> = [];
 	public function new() {}
 	
 	public function getLayerName(i:Int, long:Bool) {
@@ -69,6 +70,24 @@ class VilToDrawerOpt {
 			});
 		});
 	}
+	
+	static var rxKeyOverride = ~/^\s*(\d+),\s*(\d+),\s*(\d+)\s*=>\s*(.+)/gm;
+	public function parseKeyOverrides(txt:String) {
+		ERegTools.each(rxKeyOverride, txt, function(rx:EReg) {
+			keyOverrides.push({
+				layer: Std.parseInt(rx.matched(1)),
+				row: Std.parseInt(rx.matched(2)),
+				col: Std.parseInt(rx.matched(3)),
+				key: rx.matched(4),
+			});
+		});
+	}
+}
+typedef VilToDrawerKeyOverride = {
+	layer:Int,
+	row:Int,
+	col:Int,
+	key:String,
 }
 typedef VilToDrawerLayerName = {
 	short:String,

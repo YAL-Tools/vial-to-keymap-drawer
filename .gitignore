@@ -1,2 +1,7 @@
 /docs/style.min.css
 /docs/VialToKeymapDrawer.js.map
+/bin/*.n
+/bin/*.exe
+/bin/*.dll
+/bin/*.ndll
+/bin/*.zip

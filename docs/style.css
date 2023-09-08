@@ -9,17 +9,23 @@ main {
 	margin: 0 auto;
 	padding: 0.5em;
 }
+main h1 {
+	margin: 0;
+}
 main input[type="text"],
 main input[type="file"],
 main textarea {
 	width: 100%;
 	box-sizing: border-box;
 }
+main textarea {
+	resize: vertical;
+}
 #vil-form {
 	margin-bottom: 0.25em;
 }
-#convert {
-	padding: 0.4em 1em;
+main input[type="button"] {
+	padding: 0.2em 0.6em;
 }
 #vil {
 	height: 20vh;

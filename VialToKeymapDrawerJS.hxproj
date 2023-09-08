@@ -44,7 +44,7 @@
   <postBuildCommand alwaysRun="False" />
   <!-- Other project options -->
   <options>
-    <option showHiddenPaths="False" />
+    <option showHiddenPaths="True" />
     <option testMovie="Webserver" />
     <option testMovieCommand="docs/index.html" />
   </options>

@@ -13,6 +13,11 @@ using StringTools;
  * @author YellowAfterlife
  */
 class VilToDrawer {
+	#if js
+	public static inline var needsHxOrder:Bool = false;
+	#else
+	public static inline var needsHxOrder:Bool = true;
+	#end
 	public static function run(opt:VilToDrawerOpt):DrawerKeymap {
 		var vkm = opt.vil;
 		var dkLayers:DynamicAccess<DrawerLayer> = new DynamicAccess();
@@ -26,6 +31,18 @@ class VilToDrawer {
 		for (i => layer in vkm.layout) {
 			var rows = layer.copy();
 			for (i => row in rows) rows[i] = row.copy();
+			//
+			for (ko in opt.keyOverrides) if (ko.layer == i) {
+				if (ko.row < 0 || ko.row >= rows.length) {
+					trace("Row out of bounds for key override", ko);
+					continue;
+				}
+				if (ko.col < 0 || ko.col >= rows[ko.row].length) {
+					trace("Column out of bounds for key override", ko);
+					continue;
+				}
+				rows[ko.row][ko.col] = ko.key;
+			}
 			//
 			for (def in opt.moveDefs) {
 				var key = rows[def.srcRow].splice(def.srcCol, 1)[0];
@@ -53,6 +70,7 @@ class VilToDrawer {
 			vLayers.push(keys);
 		}
 		//
+		var layerNames = [];
 		for (li => vkeys in vLayers) {
 			var dkeys = [];
 			for (k => kc in vkeys) {
@@ -81,8 +99,11 @@ class VilToDrawer {
 				}
 				dkeys.push(dk);
 			}
-			dkLayers[getLayerName(li)] = dkeys;
+			var ln = getLayerName(li);
+			dkLayers[ln] = dkeys;
+			layerNames.push(ln);
 		}
+		if (needsHxOrder) dkLayers["__hxOrder__"] = cast layerNames;
 		//
 		var dCombos:Array<DrawerCombo> = [];
 		for (vCombo in vkm.combo) {
@@ -120,6 +141,9 @@ class VilToDrawer {
 	}
 	public static function runTxt(opt:VilToDrawerOpt) {
 		var dkm = run(opt);
+		if (needsHxOrder) {
+			return tools.JsonPrinterWithOrder.print(dkm, null, "  ");
+		}
 		return Json.stringify(dkm, null, "  ");
 	}
 }
