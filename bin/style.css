@@ -1,0 +1,29 @@
+body {
+    background-color: #899FC6;
+	font: 15px sans-serif;
+	line-height: 1.5;
+}
+main {
+	background-color: white;
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 0.5em;
+}
+main input[type="text"],
+main input[type="file"],
+main textarea {
+	width: 100%;
+	box-sizing: border-box;
+}
+#vil-form {
+	margin-bottom: 0.25em;
+}
+#convert {
+	padding: 0.4em 1em;
+}
+#vil {
+	height: 20vh;
+}
+#out {
+	height: 60vh;
+}
