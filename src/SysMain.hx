@@ -15,7 +15,9 @@ class SysMain {
 	}
 	static function getText(path:String) {
 		try {
-			return File.getContent(path);
+			var text = File.getContent(path);
+			text = text.replace("\\r", "");
+			return text;
 		} catch (x:Dynamic) {
 			error('Failed to read "$path":' + x);
 			return null;

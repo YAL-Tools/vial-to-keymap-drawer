@@ -1,6 +1,8 @@
 package vial;
+import haxe.Json;
 import vial.VialKeyNames;
 import drawer.DrawerKeymap;
+import vial.VialKeysWithShiftState;
 using StringTools;
 
 /**
@@ -8,50 +10,107 @@ using StringTools;
  * @author YellowAfterlife
  */
 abstract VialKey(String) from String to String {
-	static var rx_modTap = new EReg("^"
-		+ "(\\w+)_T"
-		+ "\\(" + "(.+)" + "\\)",
-	"");
-	static var rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$", "");
-	static var rx_layer = new EReg("^(MO|DF|TG|TT|OSL|TO)" + "\\(" + "(\\d+)" + "\\)$", "");
-	static var rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$", "");
-	public function toDrawerKey(opt:VilToDrawerOpt):DrawerKey {
+	public function toDrawerKey(opt:VilToDrawerOpt, oneLine:Bool = false):DrawerKey {
 		var kc:String = this;
 		if (kc == null || kc == "" || kc == "KC_NO") return null;
+		
+		// `LSft_T(kc)` and alike
+		static var rx_modTap = new EReg("^"
+			+ "(\\w+)_T"
+			+ "\\(" + "(.+)" + "\\)",
+		"");
 		if (rx_modTap.match(kc)) {
 			var key = rx_modTap.matched(1);
 			var t:VialKey = rx_modTap.matched(2);
-			return {
-				t: t.toDrawerKey(opt),
-				h: key,
-			}
+			var dk = t.toDrawerKey(opt).toExt();
+			dk.h = key;
+			return dk;
 		}
 		
+		// show "MO <layer tag>" if appropriate
+		static var rx_layer = new EReg("^(MO|DF|TG|TT|OSL|TO)" + "\\(" + "(\\d+)" + "\\)$", "");
 		if (rx_layer.match(kc)) {
 			var li = Std.parseInt(rx_layer.matched(2));
 			return rx_layer.matched(1) + " " + opt.getLayerName(li, false);
 		}
 		
-		if (rx_lt.match(kc)) {
-			var h:VialKey = "MO(" + rx_lt.matched(1) + ")";
-			var t:VialKey = rx_lt.matched(2);
-			return {
-				t: t.toDrawerKey(opt),
-				h: h.toDrawerKey(opt),
+		// `TD(x)`
+		static var rx_td = new EReg("^TD" + "\\(" + "(\\d+)" + "\\)$", "");
+		if (rx_td.match(kc)) {
+			var ti = Std.parseInt(rx_td.matched(1));
+			var td = opt.vil.tap_dance[ti];
+			if (td != null) {
+				return {
+					s: kc,
+					t: td.tap.toDrawerKey(opt, true).toFlat(Tap),
+					h: td.hold.toDrawerKey(opt, true).toFlat(Tap),
+				};
 			}
 		}
 		
+		// `LT2(kc)` -> { t: kc, h: MO(2) }
+		static var rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$", "");
+		if (rx_lt.match(kc)) {
+			var t:VialKey = rx_lt.matched(2);
+			var h:VialKey = "MO(" + rx_lt.matched(1) + ")";
+			var dk = t.toDrawerKey(opt).toExt();
+			dk.h = h.toDrawerKey(opt).toFlat(Tap);
+			return dk;
+		}
+		
+		// `LSFT(kc)` (special handling - replaces tap-state by shift-state)
+		static var rx_shift = new EReg("^([LR]SFT)" + "\\(" + "(.+)" + "\\)$", "");
+		if (rx_shift.match(kc)) {
+			var shift = rx_shift.matched(1) + "+";
+			var key:VialKey = rx_shift.matched(2);
+			var dk = key.toDrawerKey(opt).toExt();
+			if (dk.s != null) {
+				dk.t = dk.s;
+			}
+			dk.s = shift;
+			return dk;
+		}
+		
+		// other `MOD(kc)` keys
+		static var rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$", "");
 		if (rx_pair.match(kc)) {
 			var f:VialKey = rx_pair.matched(1);
 			var k:VialKey = rx_pair.matched(2);
-			return {
-				t: k.toDrawerKey(opt),
-				s: f.toDrawerKey(opt),
-			};
+			var dk = k.toDrawerKey(opt).toExt();
+			if (dk.s != null) {
+				dk.t = dk.s + "\n" + dk.t;
+			}
+			dk.s = f + "+";
+			return dk;
+		}
+		
+		// {"t":"A", "s":"B"} or "key"
+		static var rx_json = new EReg("^(?:" + [
+			"\\{" + ".+" + "\\}",
+			"\""  + ".+" + "\"",
+		].join("|") + ")\\s*$", "");
+		if (rx_json.match(kc)) {
+			try {
+				return Json.parse(kc);
+			} catch (x:Dynamic) {
+				trace('Error parsing JSON "$kc":', x);
+				return kc;
+			}
 		}
 		
 		var fullName = VialKeyNames.map[kc];
-		if (fullName != null) return fullName;
+		if (fullName != null) {
+			if (oneLine) {
+				return fullName.replace("\n", "  ");
+			}
+			if (VialKeysWithShiftState.map.exists(kc)) {
+				var parts = fullName.split("\n");
+				if (parts.length > 1) {
+					return { s: parts[0], t: parts[1] };
+				}
+			}
+			return fullName;
+		}
 		
 		if (kc.startsWith("KC_")) return kc.substr(3);
 		return kc;

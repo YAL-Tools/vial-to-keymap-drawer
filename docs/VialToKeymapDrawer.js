@@ -743,6 +743,23 @@ VilToDrawerOpt.prototype = {
 	}
 	,__class__: VilToDrawerOpt
 };
+var drawer_DrawerKey = {};
+drawer_DrawerKey.isFlat = function(this1) {
+	return typeof(this1) == "string";
+};
+drawer_DrawerKey.toExt = function(this1) {
+	if(typeof(this1) == "string") {
+		return { t : this1};
+	} else {
+		return this1;
+	}
+};
+drawer_DrawerKey.toFlat = function(this1,a) {
+	if(typeof(this1) == "string") {
+		return this1;
+	}
+	return Reflect.field(this1,a);
+};
 var haxe_Exception = function(message,previous,native) {
 	Error.call(this,message);
 	this.message = message;
@@ -1516,27 +1533,61 @@ vial_VialKey.toDrawerKey = function(this1,opt) {
 	if(kc == null || kc == "" || kc == "KC_NO") {
 		return null;
 	}
-	if(vial_VialKey.rx_modTap.match(kc)) {
-		var key = vial_VialKey.rx_modTap.matched(1);
-		var t = vial_VialKey.rx_modTap.matched(2);
-		return { t : vial_VialKey.toDrawerKey(t,opt), h : key};
+	if(vial_VialKey.toDrawerKey_rx_modTap.match(kc)) {
+		var key = vial_VialKey.toDrawerKey_rx_modTap.matched(1);
+		var t = vial_VialKey.toDrawerKey_rx_modTap.matched(2);
+		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(t,opt));
+		dk.h = key;
+		return dk;
 	}
-	if(vial_VialKey.rx_layer.match(kc)) {
-		var li = Std.parseInt(vial_VialKey.rx_layer.matched(2));
-		return vial_VialKey.rx_layer.matched(1) + " " + opt.getLayerName(li,false);
+	if(vial_VialKey.toDrawerKey_rx_layer.match(kc)) {
+		var li = Std.parseInt(vial_VialKey.toDrawerKey_rx_layer.matched(2));
+		return vial_VialKey.toDrawerKey_rx_layer.matched(1) + " " + opt.getLayerName(li,false);
 	}
-	if(vial_VialKey.rx_lt.match(kc)) {
-		var h = "MO(" + vial_VialKey.rx_lt.matched(1) + ")";
-		var t = vial_VialKey.rx_lt.matched(2);
-		return { t : vial_VialKey.toDrawerKey(t,opt), h : vial_VialKey.toDrawerKey(h,opt)};
+	if(vial_VialKey.toDrawerKey_rx_lt.match(kc)) {
+		var t = vial_VialKey.toDrawerKey_rx_lt.matched(2);
+		var h = "MO(" + vial_VialKey.toDrawerKey_rx_lt.matched(1) + ")";
+		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(t,opt));
+		dk.h = drawer_DrawerKey.toFlat(vial_VialKey.toDrawerKey(h,opt),"t");
+		return dk;
 	}
-	if(vial_VialKey.rx_pair.match(kc)) {
-		var f = vial_VialKey.rx_pair.matched(1);
-		var k = vial_VialKey.rx_pair.matched(2);
-		return { t : vial_VialKey.toDrawerKey(k,opt), s : vial_VialKey.toDrawerKey(f,opt)};
+	if(vial_VialKey.toDrawerKey_rx_shift.match(kc)) {
+		var shift = vial_VialKey.toDrawerKey_rx_shift.matched(1) + "+";
+		var key = vial_VialKey.toDrawerKey_rx_shift.matched(2);
+		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(key,opt));
+		if(dk.s != null) {
+			dk.t = dk.s;
+		}
+		dk.s = shift;
+		return dk;
+	}
+	if(vial_VialKey.toDrawerKey_rx_pair.match(kc)) {
+		var f = vial_VialKey.toDrawerKey_rx_pair.matched(1);
+		var k = vial_VialKey.toDrawerKey_rx_pair.matched(2);
+		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(k,opt));
+		if(dk.s != null) {
+			dk.t = dk.s + "\n" + dk.t;
+		}
+		dk.s = f + "+";
+		return dk;
+	}
+	if(vial_VialKey.rx_json.match(kc)) {
+		try {
+			return JSON.parse(kc);
+		} catch( _g ) {
+			var x = haxe_Exception.caught(_g).unwrap();
+			haxe_Log.trace("Error parsing JSON \"" + kc + "\":",{ fileName : "src/vial/VialKey.hx", lineNumber : 75, className : "vial._VialKey.VialKey_Impl_", methodName : "toDrawerKey", customParams : [x]});
+			return kc;
+		}
 	}
 	var fullName = vial_VialKeyNames.map.h[kc];
 	if(fullName != null) {
+		if(Object.prototype.hasOwnProperty.call(vial_VialKeysWithShiftState.map.h,kc)) {
+			var parts = fullName.split("\n");
+			if(parts.length > 1) {
+				return { s : parts[0], t : parts[1]};
+			}
+		}
 		return fullName;
 	}
 	if(StringTools.startsWith(kc,"KC_")) {
@@ -1589,6 +1640,8 @@ vial_VialKeymapTapDance.get_tapTerm = function(this1) {
 vial_VialKeymapTapDance.set_tapTerm = function(this1,t) {
 	return this1[4] = t;
 };
+var vial_VialKeysWithShiftState = function() { };
+vial_VialKeysWithShiftState.__name__ = true;
 function $getIterator(o) { if( o instanceof Array ) return new haxe_iterators_ArrayIterator(o); else return o.iterator(); }
 function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $global.$haxeUID++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = m.bind(o); o.hx__closures__[m.__id__] = f; } return f; }
 $global.$haxeUID |= 0;
@@ -1626,10 +1679,12 @@ VilToDrawerOpt.rxLayerShortLong = new EReg("^(\\S{1,6})(?::.*|\\s+\\(.*\\))$",""
 VilToDrawerOpt.rxMoveDef = new EReg("^\\s*(\\d+),\\s*(\\d+)\\s*=>\\s*(\\d+),\\s*(\\d+)","gm");
 VilToDrawerOpt.rxKeyOverride = new EReg("^\\s*(\\d+),\\s*(\\d+),\\s*(\\d+)\\s*=>\\s*(.+)","gm");
 tools_ERegTools.escapeRx_1 = new EReg("([.*+?^${}()|[\\]\\/\\\\])","g");
-vial_VialKey.rx_modTap = new EReg("^" + "(\\w+)_T" + "\\(" + "(.+)" + "\\)","");
-vial_VialKey.rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$","");
-vial_VialKey.rx_layer = new EReg("^(MO|DF|TG|TT|OSL|TO)" + "\\(" + "(\\d+)" + "\\)$","");
-vial_VialKey.rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_shift = new EReg("^([LR]SFT)" + "\\(" + "(.+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_layer = new EReg("^(MO|DF|TG|TT|OSL|TO)" + "\\(" + "(\\d+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_modTap = new EReg("^" + "(\\w+)_T" + "\\(" + "(.+)" + "\\)","");
+vial_VialKey.rx_json = new EReg("^\\{.+\\}\\s*$","");
 vial_VialKeyNames.map = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
@@ -2109,6 +2164,22 @@ vial_VialKeyNames.map = (function($this) {
 	_g.h["MI_BENDD"] = "ᴹᴵᴰᴵ\nBendᴰᴺ";
 	_g.h["MI_BENDU"] = "ᴹᴵᴰᴵ\nBendᵁᴾ";
 	$r = _g;
+	return $r;
+}(this));
+vial_VialKeysWithShiftState.list = ["KC_1","KC_2","KC_3","KC_4","KC_5","KC_6","KC_7","KC_8","KC_9","KC_0","KC_MINUS","KC_EQUAL","KC_LBRACKET","KC_RBRACKET","KC_BSLASH","KC_SCOLON","KC_QUOTE","KC_GRAVE","KC_COMMA","KC_DOT","KC_SLASH","KC_NONUS_HASH","KC_NONUS_BSLASH","KC_RO","KC_KANA","KC_JYEN","KC_HENK","KC_MHEN","KC_LANG1","KC_LANG2"];
+vial_VialKeysWithShiftState.map = (function($this) {
+	var $r;
+	var m = new haxe_ds_StringMap();
+	{
+		var _g = 0;
+		var _g1 = vial_VialKeysWithShiftState.list;
+		while(_g < _g1.length) {
+			var key = _g1[_g];
+			++_g;
+			m.h[key] = true;
+		}
+	}
+	$r = m;
 	return $r;
 }(this));
 Main.main();

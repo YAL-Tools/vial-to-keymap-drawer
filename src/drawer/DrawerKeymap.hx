@@ -24,5 +24,25 @@ typedef DrawerKeyExt = {
 	var?s:String;
 	var?type:String;
 };
-typedef DrawerKey = EitherType<String, DrawerKeyExt>;
+typedef DrawerKeyFlat = String;
+abstract DrawerKey(Dynamic)
+	from DrawerKeyFlat from DrawerKeyExt
+	to DrawerKeyFlat to DrawerKeyExt
+{
+	public inline function isFlat():Bool {
+		return (this is String);
+	}
+	public function toExt():DrawerKeyExt {
+		return isFlat() ? { t: this } : this;
+	}
+	public function toFlat(a:DrawerKeyAction):DrawerKeyFlat {
+		if (isFlat()) return this;
+		return Reflect.field(this, a);
+	}
+}
+enum abstract DrawerKeyAction(String) to String {
+	var Tap = "t";
+	var Hold = "h";
+	var Shift = "s";
+}
 typedef DrawerLayer = EitherType<Array<DrawerKey>, Array<Array<DrawerKey>>>;

@@ -1,4 +1,4 @@
 DEF
-DIGITS (reverts digits to normal configuration)
+SYM (toggle layer)
 NAV
 MISC: F-keys and numpad
