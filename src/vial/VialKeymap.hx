@@ -7,6 +7,9 @@ using StringTools;
  * @author YellowAfterlife
  */
 typedef VialKeymap = {
+	// VIA:
+	var layers:Array<Array<VialKey>>;
+	// VIAL:
 	var version:Int;
 	var uid:Int;
 	var layout:Array<Array<Array<VialKey>>>;

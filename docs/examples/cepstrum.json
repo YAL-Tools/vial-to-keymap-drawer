@@ -1,0 +1,33 @@
+{
+	"resourceType": "https://yal-tools.github.io/vial-to-keymap-drawer/",
+	"fields": {
+		"keyboard": "keebio/cepstrum/rev1",
+		"layout": "",
+		"half-after-half": false,
+		"mirror-right-half": false,
+		"omit-non-keys": 2,
+		"key-ranges": [
+			"0,0-8",
+			"0,45-53",
+			
+			"0,9-17",
+			"0,54-62",
+			
+			"0,18-26",
+			"0,63-71",
+			
+			"0,27-35",
+			"0,72-80",
+			
+			"0,36-43",
+			"0,81-89",
+			
+			""
+		],
+		"layer-names": [],
+		"key-overrides": [],
+		"notes": [
+			"Uses Key Ranges to order keys correctly and 'Omit KC_NO' to avoid the various SINC PCB's optional keys."
+		]
+	}
+}

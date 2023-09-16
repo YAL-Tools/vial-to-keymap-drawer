@@ -1,0 +1,18 @@
+{
+	"resourceType": "https://yal-tools.github.io/vial-to-keymap-drawer/",
+	"fields": {
+		"keyboard": "corne_rotated",
+		"layout": "LAYOUT_split_3x6_3",
+		"half-after-half": true,
+		"mirror-right-half": false,
+		"omit-m1": true,
+		"omit-non-keys": "0",
+		"move-defs": [],
+		"layer-names": [],
+		"key-overrides": [],
+		"mark-non-keys": "unused",
+		"notes": [
+			"Marks unused keys, otherwise a relatively normal configuration."
+		]
+	}
+}

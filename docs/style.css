@@ -14,9 +14,13 @@ main h1 {
 }
 main input[type="text"],
 main input[type="file"],
+main select:not(.inline),
 main textarea {
 	width: 100%;
 	box-sizing: border-box;
+}
+textarea.prop {
+	font-family: sans-serif;
 }
 main textarea {
 	resize: vertical;
@@ -24,12 +28,20 @@ main textarea {
 #vil-form {
 	margin-bottom: 0.25em;
 }
-main input[type="button"] {
+main input[type="button"], main select {
 	padding: 0.2em 0.6em;
 }
-#vil {
+/*#vil {
 	height: 20vh;
 }
 #out {
 	height: 60vh;
+}*/
+details {
+	padding: 0.2em 0.5em;
+	margin: 0.5em 0;
+	border: 1px dashed #ccc;
+}
+details > summary {
+	padding-left: 0.5em;
 }

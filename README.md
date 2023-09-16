@@ -10,6 +10,8 @@ of taking screenshots of Vial configurator.
 
 Also lets you label your layers and keys to make the keymap easier to read.
 
+![](example.svg)
+
 ## Inevitable caveats
 
 Apparently the order in which Vial stores keys in `.vil` files does not necessarily match up
@@ -17,7 +19,8 @@ with how keys are defined in QMK, therefore the keys may appear out of order, de
 
 For this I am giving you a couple checkboxes for common oddities and ability to move a key based on row-column.
 
-Please accept my condolences in advance, but good news - you'll only need to do this once per keyboard.
+Please accept my condolences in advance, but good news - you'll only need to do this once per keyboard.  
+Perhaps contribute an example `.vil` + `.json` if it's a particularly quirky one?
 
 ## Using
 
@@ -59,10 +62,14 @@ nekotools boot bin/VialToKeymapDrawer.n
 
 Tool by YellowAfterlife
 
-Written in [Haxe](https://haxe.org).
+- Written in [Haxe](https://haxe.org).
+- Uses [FileSaver.js](https://github.com/eligrey/FileSaver.js/).
 
-Uses [FileSaver.js](https://github.com/eligrey/FileSaver.js/).
+Display data comes from the following:
 
-The displayed key names are based on parsing a file from
-[Vial GUI](https://github.com/vial-kb/vial-gui),
-so I guess this is now GPLv2, huh? Ah well
+- Vial key labels: [Vial GUI](https://github.com/vial-kb/vial-gui)
+- VIA key labels: [VIA GUI](https://github.com/the-via/app)
+- QMK keyboard list: [QMK Configurator](https://config.qmk.fm/)  
+	By which I mean not the _source code_ of QMK configurator, but taken straight from the web page.
+
+As result of sourcing data from software licensed under GPLv2, this tool is probably also GPLv2.

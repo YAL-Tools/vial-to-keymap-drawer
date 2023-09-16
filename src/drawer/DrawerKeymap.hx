@@ -12,6 +12,10 @@ typedef DrawerKeymap = {
 	};
 	var layers:DynamicAccess<DrawerLayer>;
 	var?combos:Array<DrawerCombo>;
+	var?draw_config:DrawerConfig;
+}
+typedef DrawerConfig = {
+	var svg_extra_style:String;
 }
 typedef DrawerCombo = {
 	var p:Array<Int>;
@@ -29,10 +33,11 @@ abstract DrawerKey(Dynamic)
 	from DrawerKeyFlat from DrawerKeyExt
 	to DrawerKeyFlat to DrawerKeyExt
 {
-	public inline function isFlat():Bool {
-		return (this is String);
+	public function isFlat():Bool {
+		return this == null || (this is String);
 	}
 	public function toExt():DrawerKeyExt {
+		if (this == null) return { t: "" };
 		return isFlat() ? { t: this } : this;
 	}
 	public function toFlat(a:DrawerKeyAction):DrawerKeyFlat {
@@ -45,4 +50,4 @@ enum abstract DrawerKeyAction(String) to String {
 	var Hold = "h";
 	var Shift = "s";
 }
-typedef DrawerLayer = EitherType<Array<DrawerKey>, Array<Array<DrawerKey>>>;
+typedef DrawerLayer = Array<DrawerKey>;

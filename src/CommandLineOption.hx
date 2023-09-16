@@ -11,11 +11,19 @@ class CommandLineOption {
 	public var args:Array<String>;
 	public var func:Dynamic;
 	public var desc:Array<String>;
-	public function new(name:String, args:Array<String>, func:Dynamic, desc:EitherType<String, Array<String>>) {
+	public var groupHeader:String;
+	public function new(
+		name:String,
+		args:Array<String>,
+		func:Dynamic,
+		desc:EitherType<String, Array<String>>,
+		?group:String
+	) {
 		this.name = name;
 		this.func = func;
 		this.args = args;
 		this.desc = desc is String ? [desc] : desc;
+		groupHeader = group;
 	}
 	public static function run(args:Array<String>, options:Array<CommandLineOption>) {
 		var i = 0;
@@ -41,7 +49,11 @@ class CommandLineOption {
 	public static function print(options:Array<CommandLineOption>) {
 		Sys.println("The following options are supported."
 			+ " Arguments are denoted in <angle brackets> here");
-		for (opt in options) {
+		for (i => opt in options) {
+			if (opt.groupHeader != null) {
+				if (i > 0) Sys.println("");
+				Sys.println(opt.groupHeader + ":");
+			}
 			Sys.print(prefix + opt.name);
 			for (arg in opt.args) {
 				Sys.print(' <$arg>');

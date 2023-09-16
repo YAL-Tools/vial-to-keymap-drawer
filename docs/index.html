@@ -11,41 +11,102 @@
 		<h1>Vial To Keymap Drawer</h1>
 		<div style="margin-bottom: 0.5em">
 		This tool takes your Vial .vil layouts and converts them to YAML files that
-		you can pass to <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer </a>to render your layout to SVG/PNG images
+		you can give to <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a>
+		(<a href="https://caksoylar.github.io/keymap-drawer">web</a>)
+		to render your layout to SVG/PNG images!<br/>
 		(<a href="https://github.com/YAL-Tools/vial-to-keymap-drawer">full description and source code</a>)
 		</div>
+		
+		<details>
+			<summary>Note on VIA support</summary>
+			The tool will <i>try</i> to process VIA keymaps, but if you've got a split keyboard
+			that only runs VIA, tough luck - VIA backups do not contain any information about
+			which keys belong to which row, so you might have to enter the key ranges by hand.
+			<br/>
+			Consider using <a href="https://docs.qmk.fm/#/cli_commands?id=qmk-via2json">via2json</a> instead.
+		</details>
+		
 		<form id="load-form" style="display:none">
 			<input type="file" id="load-picker" accept=".json" />
 		</form>
+		
 		<input type="button" value="Load settings" id="load-settings" />
 		<input type="button" value="Save settings" id="save-settings" />
 		·
-		<input type="button" value="Load example" id="sample" />
+		<select class="inline transient" id="sample">
+			<option value="" selected>Load example</option>
+			<hr/>
+			<option value="yal-sofle">YAL's Sofle Choc</option>
+			<option value="corvett-piantor">corvett's Pianthor</option>
+			<option value="cepstrum">Cepstrum (VIA)</option>
+		</select>
 		<input type="button" value="Clear settings" id="clear" />
 		<br/>
-		What kind of keyboard is this? (find it in <a href="https://config.qmk.fm/">Configurator</a>)
-		<input type="text" id="keyboard" value="" placeholder="e.g. corne_rotated or splitkb/aurora/sofle_v2/rev1" /><br/>
-		Layout name (optional):
+		
+		<textarea class="prop" id="notes" rows="3" placeholder="Notes about the configuration, for yourself or others" style="margin: 0.5em 0"></textarea>
+		
+		What kind of keyboard is this? (as per <a href="https://config.qmk.fm/">Configurator</a>)
+		<input type="text" id="keyboard" list="qmk_keyboard" value="" placeholder="e.g. corne_rotated or splitkb/aurora/sofle_v2/rev1" /><br/>
+		<datalist id="qmk_keyboard"></datalist>
+		
+		Layout name (optional; also look it up in Configurator):
 		<input type="text" id="layout" value="" placeholder="e.g. LAYOUT_split_3x5_3" /><br/>
+		
+		Include <i>only</i> these layer(s):<br/>
+		<input type="text" id="include-layers" placeholder="0,1" />
+		
 		<details>
-			<summary>Keys appear out of order?</summary>
+			<summary>Keys out of order or too many keys?</summary>
 			<input type="checkbox" id="half-after-half" /> One half after another (instead of row by row)<br/>
 			<input type="checkbox" id="mirror-right-half" /> Mirrored keys on right half<br/>
+			<input type="checkbox" id="omit-m1" /> Omit <code>-1</code> keys<br/>
+			Omit keys that are KC_NO on:<br/>
+			<select id="omit-non-keys">
+				<option value="0" selected>(don't omit)</option>
+				<option value="1">First layer</option>
+				<option value="2">First two layers</option>
+				<option value="-1">All layers</option>
+			</select>
 			Key move definitions (old row, old col => new row, new col):<br/>
 			<textarea id="move-defs" rows="4" placeholder="1,2 => 0,3"></textarea>
+			OR enter key ranges to pick from the source file:<br/>
+			<textarea id="key-ranges" rows="4" placeholder="0,0-3&#10;2,0-3&#10;1,0-3&#10;3,0-3"></textarea>
 		</details>
-		Layer names:<br/>
-		<textarea id="layer-names" rows="4" placeholder="DEF&#10;NAV&#10;MEDIA (and other stuff)&#10;MISC: The return of"></textarea>
-		Custom key labels (layer, row, col => newkey):<br/>
-		<textarea id="key-overrides" rows="4" placeholder="0,1,2 => COOL"></textarea>
+		
+		<details>
+			<summary>Customization</summary>
+			Layer names:<br/>
+		<textarea id="layer-names" rows="4" placeholder="DEF&#10;NAV&#10;MEDIA (and other stuff)&#10;TITLE: Subtitle"></textarea>
+			Custom key labels (layer, row, col => newkey):<br/>
+			<textarea id="key-overrides" rows="4" placeholder="0,1,2 => COOL"></textarea>
+			Mark keys that are disabled on all layers as:
+			<select id="mark-non-keys">
+				<option value="" selected>(don't mark)</option>
+				<option value="ghost">Ghost/optional</option>
+				<option value="unused">Dashed border</option>
+				<option value="hidden">Invisible</option>
+			</select>
+			Note: Dashed border/invisible styles only work in dev version of keymap-drawer as of Sep 2023.
+		</details>
+		
 		Pick (or paste) your VIL layout:
 		<form id="vil-form">
-			<input type="file" id="vil-picker" accept=".vil" />
+			<input type="file" id="vil-picker" accept=".vil, .json" />
 		</form>
-		<textarea id="vil"></textarea>
-		<input type="button" value="Convert!" id="convert" /><br/>
-		Output:
-		<textarea id="out"></textarea>
+		<textarea id="vil" rows="4" class="transient" placeholder='{"version": 1, "uid": 128889854249716, ... }'></textarea>
+		<input type="button" value="Convert!" id="convert" />
+		<label>
+			<input type="checkbox" checked class="transient" id="copy-after-convert"/>
+			Copy to clipboard afterwards
+		</label>
+		<br/>
+		
+		Output YAML-JSON:
+		<textarea id="out" rows="6" class="transient"></textarea>
+		
+		Output log:
+		<textarea id="log" rows="6" class="transient prop"></textarea>
+		
 		<hr/>
 		A tool by YellowAfterlife.<br/>
 		You can
@@ -54,5 +115,15 @@
 	</main>
 	<script src="FileSaver.min.js"></script>
 	<script src="VialToKeymapDrawer.js"></script>
+	
+	<!-- Google tag (gtag.js) -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-4R5QPPHC8M"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'G-4R5QPPHC8M');
+	</script>
 </body>
 </html>

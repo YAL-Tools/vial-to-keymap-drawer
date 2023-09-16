@@ -1,5 +1,7 @@
 package vial;
 import haxe.Json;
+import tools.JsonParserWithComments;
+import via.ViaKeyNames;
 import vial.VialKeyNames;
 import drawer.DrawerKeymap;
 import vial.VialKeysWithShiftState;
@@ -38,7 +40,7 @@ abstract VialKey(String) from String to String {
 		static var rx_td = new EReg("^TD" + "\\(" + "(\\d+)" + "\\)$", "");
 		if (rx_td.match(kc)) {
 			var ti = Std.parseInt(rx_td.matched(1));
-			var td = opt.vil.tap_dance[ti];
+			var td = opt.root.tap_dance[ti];
 			if (td != null) {
 				return {
 					s: kc,
@@ -49,10 +51,16 @@ abstract VialKey(String) from String to String {
 		}
 		
 		// `LT2(kc)` -> { t: kc, h: MO(2) }
-		static var rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$", "");
+		static var rx_lt = new EReg("^"
+			+ "(?:"
+				+ "LT(\\d)\\(" + "|"
+				+ "LT\\((\\d+),\\s*"
+			+ ")" + "(.+)" + "\\)"
+		+ "$", "");
 		if (rx_lt.match(kc)) {
-			var t:VialKey = rx_lt.matched(2);
-			var h:VialKey = "MO(" + rx_lt.matched(1) + ")";
+			var t:VialKey = rx_lt.matched(3);
+			var lts = rx_lt.matched(1) ?? rx_lt.matched(2);
+			var h:VialKey = "MO(" + lts + ")";
 			var dk = t.toDrawerKey(opt).toExt();
 			dk.h = h.toDrawerKey(opt).toFlat(Tap);
 			return dk;
@@ -74,7 +82,13 @@ abstract VialKey(String) from String to String {
 		// other `MOD(kc)` keys
 		static var rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$", "");
 		if (rx_pair.match(kc)) {
-			var f:VialKey = rx_pair.matched(1);
+			var f:String = rx_pair.matched(1);
+			switch (f) {
+				case "C": f = "Ctrl";
+				case "S": f = "Shift";
+				case "A": f = "Alt";
+				case "G": f = "Gui";
+			}
 			var k:VialKey = rx_pair.matched(2);
 			var dk = k.toDrawerKey(opt).toExt();
 			if (dk.s != null) {
@@ -91,14 +105,14 @@ abstract VialKey(String) from String to String {
 		].join("|") + ")\\s*$", "");
 		if (rx_json.match(kc)) {
 			try {
-				return Json.parse(kc);
+				return JsonParserWithComments.parse(kc);
 			} catch (x:Dynamic) {
 				trace('Error parsing JSON "$kc":', x);
 				return kc;
 			}
 		}
 		
-		var fullName = VialKeyNames.map[kc];
+		var fullName = opt.isVIA ? ViaKeyNames.map[kc] : VialKeyNames.map[kc];
 		if (fullName != null) {
 			if (oneLine) {
 				return fullName.replace("\n", "  ");
@@ -117,9 +131,13 @@ abstract VialKey(String) from String to String {
 	}
 	
 	public function isValid() {
+		if (this is Float && (cast this:Float) == -1) return false;
 		return switch (this) {
 			case null, "", "KC_NO": false;
 			default: true;
 		}
+	}
+	public function isM1() {
+		return (this is Float) && (cast this:Float) == -1;
 	}
 }

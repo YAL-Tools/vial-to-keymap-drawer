@@ -3,7 +3,7 @@ import sys.io.File;
 import tools.ERegTools;
 
 /**
- * How to run (from src/:)
+ * How to run (from `src/`):
  * haxe --neko vial/VialKeyNamesGen.n -main vial.VialKeyNamesGen
  * neko vial/VialKeyNamesGen.n
  * @author YellowAfterlife

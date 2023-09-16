@@ -116,15 +116,34 @@ Main.find = function(id,c) {
 };
 Main.convert = function() {
 	var opt = new VilToDrawerOpt();
+	Main.fdLog.value = "";
+	opt.log = function(level,v) {
+		Main.fdLog.value += (Main.fdLog.value.length > 0 ? "\n" : "") + ("[" + level + "] ") + (v == null ? "null" : Std.string(v));
+	};
 	opt.qmkKeyboard = StringTools.trim(Main.fdKeyboard.value);
 	opt.qmkLayout = StringTools.trim(Main.fdLayout.value);
 	opt.parseVil(Main.fdVil.value);
 	opt.halfAfterHalf = Main.cbHalfAfterHalf.checked;
 	opt.mirrorRightHalf = Main.cbMirrorRightHalf.checked;
-	opt.parseLayerNames(Main.fdLayerNames.value);
+	opt.omitNonKeys = Std.parseInt(Main.ddOmitNonKeys.value);
+	opt.omitM1 = Main.cbOmitM1.checked;
 	opt.parseMoveDefs(Main.fdMoveDefs.value);
+	opt.parseRangeDefs(Main.fdKeyRanges.value);
+	opt.parseLayerNames(Main.fdLayerNames.value);
+	opt.parseIncludeLayers(Main.fdIncludeLayers.value);
 	opt.parseKeyOverrides(Main.fdKeyOverrides.value);
-	Main.fdOut.value = VilToDrawer.runTxt(opt);
+	opt.markNonKeysAs = Main.ddMarkNonKeysAs.value;
+	if(opt.markNonKeysAs == "") {
+		opt.markNonKeysAs = null;
+	}
+	try {
+		Main.fdOut.value = VilToDrawer.runTxt(opt);
+		opt.info("Done!");
+	} catch( _g ) {
+		var x = haxe_Exception.caught(_g).unwrap();
+		$global.console.error("Conversion error:",x);
+		opt.error(x);
+	}
 };
 Main.clear = function() {
 	var _g = 0;
@@ -136,6 +155,7 @@ Main.clear = function() {
 	}
 };
 Main.applySettings = function(root) {
+	Main.clear();
 	var access = root.fields;
 	var _g_access = access;
 	var _g_keys = Reflect.fields(access);
@@ -175,11 +195,15 @@ Main.saveSettings = function() {
 	var blob = new Blob([JSON.stringify(root,null,"\t")]);
 	window.saveAs(blob,"settings.json","application/json");
 };
-Main.loadSample = function() {
-	var rs = new haxe_http_HttpJs("yal-sofle.json");
+Main.loadSample = function(name) {
+	if(name == null) {
+		name = "yal-sofle";
+	}
+	var sfx = "?t=" + "2023-09-16--17-07-37";
+	var rs = new haxe_http_HttpJs("examples/" + name + ".json" + sfx);
 	rs.onData = function(s) {
 		Main.applySettings(JSON.parse(s));
-		var rv = new haxe_http_HttpJs("yal-sofle.vil");
+		var rv = new haxe_http_HttpJs("examples/" + name + ".vil" + sfx);
 		rv.onData = function(s) {
 			Main.fdVil.value = s;
 			Main.convert();
@@ -191,11 +215,14 @@ Main.loadSample = function() {
 Main.main = function() {
 	var local = window.document.location.hostname == "localhost";
 	var _g = 0;
-	var _g1 = window.document.querySelectorAll("main input[id], main textarea[id]");
+	var _g1 = window.document.querySelectorAll(["main input[id]","main textarea[id]","main select[id]"].join(", "));
 	while(_g < _g1.length) {
 		var node = _g1[_g];
 		++_g;
 		var el = node;
+		if(el.classList.contains("transient")) {
+			continue;
+		}
 		if(el == Main.fdOut || el == Main.fdVil) {
 			continue;
 		}
@@ -233,10 +260,28 @@ Main.main = function() {
 				})(ei)});
 				break;
 			}
+		} else if(el.tagName == "SELECT") {
+			var es = [el];
+			Main.fields.push({ id : el.id, get : (function(es) {
+				return function() {
+					return es[0].value;
+				};
+			})(es), set : (function(es) {
+				return function(val) {
+					es[0].value = val;
+				};
+			})(es), reset : (function(es) {
+				return function() {
+					es[0].selectedIndex = 0;
+				};
+			})(es)});
 		} else {
 			var et = [el];
 			Main.fields.push({ id : el.id, get : (function(et) {
 				return function() {
+					if(StringTools.trim(et[0].value) == "") {
+						return [];
+					}
 					return et[0].value.split("\n");
 				};
 			})(et), set : (function(et) {
@@ -285,7 +330,7 @@ Main.main = function() {
 		};
 		fileReader.onload = function() {
 			try {
-				Main.applySettings(JSON.parse(fileReader.result));
+				Main.applySettings(new tools_JsonParserWithComments(fileReader.result).doParse());
 			} catch( _g ) {
 				var x = haxe_Exception.caught(_g).unwrap();
 				var v = "Error loading settings: " + Std.string(x);
@@ -296,6 +341,9 @@ Main.main = function() {
 	};
 	Main.btConvert.onclick = function() {
 		Main.convert();
+		if(Main.cbCopyAfterConvert.checked) {
+			$global.navigator.clipboard.writeText(Main.fdOut.value);
+		}
 	};
 	Main.btSave.onclick = function() {
 		Main.saveSettings();
@@ -303,15 +351,35 @@ Main.main = function() {
 	Main.btLoad.onclick = function() {
 		Main.ffLoad.click();
 	};
-	Main.btSample.onclick = function() {
-		if(!window.confirm("Are you sure that you want to replace your settings with the example? This cannot be undone!")) {
+	Main.ddSample.onchange = function() {
+		var name = Main.ddSample.value;
+		if(name == "") {
 			return;
 		}
-		Main.loadSample();
+		if(!window.confirm("Are you sure that you want to replace your settings with the example? This cannot be undone!")) {
+			Main.ddSample.selectedIndex = 0;
+			return;
+		}
+		Main.ddSample.selectedIndex = 0;
+		Main.loadSample(name);
 	};
-	if(local) {
-		Main.loadSample();
-	}
+	var kbjs = window.document.createElement("script");
+	kbjs.onload = function() {
+		var list = window.document.getElementById("qmk_keyboard");
+		var _g = 0;
+		var _g1 = window.qmk_keyboards;
+		while(_g < _g1.length) {
+			var kb = _g1[_g];
+			++_g;
+			var opt = window.document.createElement("option");
+			opt.value = kb;
+			list.appendChild(opt);
+		}
+	};
+	kbjs.async = true;
+	kbjs.src = "qmk_keyboards.js";
+	window.document.body.appendChild(kbjs);
+	$global.console.info("Hello!");
 };
 Math.__name__ = true;
 var Reflect = function() { };
@@ -473,96 +541,252 @@ Type.typeof = function(v) {
 };
 var VilToDrawer = function() { };
 VilToDrawer.__name__ = true;
-VilToDrawer.run = function(opt) {
-	var vkm = opt.vil;
-	var dkLayers = { };
+VilToDrawer.procViaLayers = function(opt) {
 	var vLayers = [];
 	var _g_current = 0;
-	var _g_array = vkm.layout;
+	var _g_array = opt.root.layers;
+	while(_g_current < _g_array.length) {
+		var _g_value = _g_array[_g_current];
+		var _g_key = _g_current++;
+		var l = _g_key;
+		var layer = _g_value;
+		var keys = [layer.slice()];
+		var checkPos = (function(keys) {
+			return function(row,col,rule) {
+				if(row != 0) {
+					opt.warn("Row should be 0 is VIA layouts (found " + row + " in \"" + rule + "\")");
+				}
+				if(col < 0 || col >= keys[0].length) {
+					opt.error("Column " + col + " out of bounds for \"" + rule + "\"");
+					return true;
+				}
+				return false;
+			};
+		})(keys);
+		if(opt.rangeDefs.length > 0) {
+			var nkeys = [];
+			var _g = 0;
+			var _g1 = opt.rangeDefs;
+			while(_g < _g1.length) {
+				var rdef = _g1[_g];
+				++_g;
+				if(checkPos(rdef.row,rdef.col,rdef.rule)) {
+					continue;
+				}
+				nkeys = nkeys.concat(keys[0].slice(rdef.col,rdef.col + rdef.count));
+			}
+			keys[0] = nkeys;
+		} else {
+			var _g2 = 0;
+			var _g3 = opt.moveDefs;
+			while(_g2 < _g3.length) {
+				var def = _g3[_g2];
+				++_g2;
+				if(checkPos(def.srcRow,def.srcCol,def.rule)) {
+					continue;
+				}
+				var sub = keys[0].splice(def.srcCol,def.count);
+				sub.reverse();
+				var _g4 = 0;
+				while(_g4 < sub.length) {
+					var key = sub[_g4];
+					++_g4;
+					keys[0].splice(def.dstCol,0,key);
+				}
+			}
+		}
+		vLayers.push(keys[0]);
+	}
+	return vLayers;
+};
+VilToDrawer.procVialLayers = function(opt) {
+	var vLayers = [];
+	var _g_current = 0;
+	var _g_array = opt.root.layout;
 	while(_g_current < _g_array.length) {
 		var _g_value = _g_array[_g_current];
 		var _g_key = _g_current++;
 		var i = _g_key;
 		var layer = _g_value;
-		var rows = layer.slice();
+		var rows = [layer.slice()];
 		var _g_current1 = 0;
-		var _g_array1 = rows;
+		var _g_array1 = rows[0];
 		while(_g_current1 < _g_array1.length) {
 			var _g_value1 = _g_array1[_g_current1];
 			var _g_key1 = _g_current1++;
 			var i1 = _g_key1;
 			var row = _g_value1;
-			rows[i1] = row.slice();
+			rows[0][i1] = row.slice();
 		}
+		var checkPos = (function(rows) {
+			return function(row,col,rule) {
+				if(row < 0 || row >= rows[0].length) {
+					opt.error("Row " + row + " out of bounds for \"" + rule + "\"");
+					return true;
+				}
+				if(col < 0 || col >= rows[0][row].length) {
+					opt.error("Column " + col + " out of bounds for \"" + rule + "\"");
+					return true;
+				}
+				return false;
+			};
+		})(rows);
 		var _g = 0;
 		var _g1 = opt.keyOverrides;
 		while(_g < _g1.length) {
 			var ko = _g1[_g];
 			++_g;
 			if(ko.layer == i) {
-				if(ko.row < 0 || ko.row >= rows.length) {
-					haxe_Log.trace("Row out of bounds for key override",{ fileName : "src/VilToDrawer.hx", lineNumber : 37, className : "VilToDrawer", methodName : "run", customParams : [ko]});
+				if(checkPos(ko.row,ko.col,ko.rule)) {
 					continue;
 				}
-				if(ko.col < 0 || ko.col >= rows[ko.row].length) {
-					haxe_Log.trace("Column out of bounds for key override",{ fileName : "src/VilToDrawer.hx", lineNumber : 41, className : "VilToDrawer", methodName : "run", customParams : [ko]});
-					continue;
-				}
-				rows[ko.row][ko.col] = ko.key;
+				rows[0][ko.row][ko.col] = ko.key;
 			}
-		}
-		var _g2 = 0;
-		var _g3 = opt.moveDefs;
-		while(_g2 < _g3.length) {
-			var def = _g3[_g2];
-			++_g2;
-			var key = rows[def.srcRow].splice(def.srcCol,1)[0];
-			rows[def.dstRow].splice(def.dstCol,0,key);
-		}
-		var rowCount = layer.length;
-		var halfRowCount = rowCount >> 1;
-		var _g4 = [];
-		var _g5 = 0;
-		var _g6 = rowCount;
-		while(_g5 < _g6) {
-			var _ = _g5++;
-			_g4.push(null);
-		}
-		var newRows = _g4;
-		var _g_current2 = 0;
-		var _g_array2 = rows;
-		while(_g_current2 < _g_array2.length) {
-			var _g_value2 = _g_array2[_g_current2];
-			var _g_key2 = _g_current2++;
-			var rk = _g_key2;
-			var row1 = _g_value2;
-			var dk = rk;
-			if(opt.halfAfterHalf) {
-				if(dk >= halfRowCount) {
-					dk = (dk - halfRowCount) * 2 + 1;
-					if(opt.mirrorRightHalf) {
-						row1.reverse();
-					}
-				} else {
-					dk *= 2;
-				}
-			}
-			newRows[dk] = row1;
 		}
 		var keys = [];
-		var _g7 = 0;
-		while(_g7 < newRows.length) {
-			var row2 = newRows[_g7];
-			++_g7;
+		if(opt.rangeDefs.length > 0) {
+			var _g2 = 0;
+			var _g3 = opt.rangeDefs;
+			while(_g2 < _g3.length) {
+				var rd = _g3[_g2];
+				++_g2;
+				if(checkPos(rd.row,rd.col,rd.rule)) {
+					continue;
+				}
+				keys = keys.concat(rows[0][rd.row].slice(rd.col,rd.count));
+			}
+		} else {
+			var _g4 = 0;
+			var _g5 = opt.moveDefs;
+			while(_g4 < _g5.length) {
+				var moveDef = _g5[_g4];
+				++_g4;
+				if(checkPos(moveDef.srcRow,moveDef.srcCol,moveDef.rule)) {
+					continue;
+				}
+				var sub = rows[0][moveDef.srcRow].splice(moveDef.srcCol,moveDef.count);
+				sub.reverse();
+				var _g6 = 0;
+				while(_g6 < sub.length) {
+					var key = sub[_g6];
+					++_g6;
+					rows[0][moveDef.dstRow].splice(moveDef.dstCol,0,key);
+				}
+			}
+			var rowCount = layer.length;
+			var halfRowCount = rowCount >> 1;
+			var _g7 = [];
 			var _g8 = 0;
-			while(_g8 < row2.length) {
-				var key1 = row2[_g8];
-				++_g8;
-				keys.push(key1);
+			var _g9 = rowCount;
+			while(_g8 < _g9) {
+				var _ = _g8++;
+				_g7.push(null);
+			}
+			var newRows = _g7;
+			var _g_current2 = 0;
+			var _g_array2 = rows[0];
+			while(_g_current2 < _g_array2.length) {
+				var _g_value2 = _g_array2[_g_current2];
+				var _g_key2 = _g_current2++;
+				var rk = _g_key2;
+				var row1 = _g_value2;
+				var dk = rk;
+				if(opt.halfAfterHalf) {
+					if(dk >= halfRowCount) {
+						dk = (dk - halfRowCount) * 2 + 1;
+						if(opt.mirrorRightHalf) {
+							row1.reverse();
+						}
+					} else {
+						dk *= 2;
+					}
+				}
+				newRows[dk] = row1;
+			}
+			var _g10 = 0;
+			while(_g10 < newRows.length) {
+				var row2 = newRows[_g10];
+				++_g10;
+				var _g11 = 0;
+				while(_g11 < row2.length) {
+					var key1 = row2[_g11];
+					++_g11;
+					keys.push(key1);
+				}
 			}
 		}
 		vLayers.push(keys);
 	}
+	return vLayers;
+};
+VilToDrawer.postProcLayers = function(vLayers,opt) {
+	var omitNonKeys = opt.omitNonKeys;
+	if(omitNonKeys != 0) {
+		var k = vLayers[0].length;
+		while(--k >= 0) {
+			if(vLayers[0][k] != "KC_NO") {
+				continue;
+			}
+			var isNon = true;
+			var _g = 1;
+			var _g1 = vLayers.length;
+			while(_g < _g1) {
+				var l2 = _g++;
+				if(omitNonKeys > 0 && l2 >= omitNonKeys) {
+					continue;
+				}
+				if(vLayers[l2][k] == "KC_NO") {
+					continue;
+				}
+				isNon = false;
+				break;
+			}
+			if(isNon) {
+				var _g2 = 0;
+				while(_g2 < vLayers.length) {
+					var vkeys = vLayers[_g2];
+					++_g2;
+					vkeys.splice(k,1);
+				}
+			}
+		}
+	}
+	if(opt.omitM1) {
+		var k = vLayers[0].length;
+		while(--k >= 0) {
+			if(!vial_VialKey.isM1(vLayers[0][k])) {
+				continue;
+			}
+			var isM1 = true;
+			var _g = 0;
+			var _g1 = vLayers.length;
+			while(_g < _g1) {
+				var l = _g++;
+				if(vial_VialKey.isM1(vLayers[l][k])) {
+					continue;
+				}
+				isM1 = false;
+				break;
+			}
+			if(!isM1) {
+				continue;
+			}
+			var _g2 = 0;
+			var _g3 = vLayers.length;
+			while(_g2 < _g3) {
+				var l1 = _g2++;
+				vLayers[l1].splice(k,1);
+			}
+		}
+	}
+};
+VilToDrawer.run = function(opt) {
+	var vkm = opt.root;
+	var isVial = !opt.isVIA;
+	var vLayers = isVial ? VilToDrawer.procVialLayers(opt) : VilToDrawer.procViaLayers(opt);
+	VilToDrawer.postProcLayers(vLayers,opt);
+	var dkLayers = { };
+	var dkLayerList = [];
 	var layerNames = [];
 	var _g_current = 0;
 	var _g_array = vLayers;
@@ -571,6 +795,9 @@ VilToDrawer.run = function(opt) {
 		var _g_key = _g_current++;
 		var li = _g_key;
 		var vkeys = _g_value;
+		if(opt.includeLayers.length > 0 && opt.includeLayers.indexOf(li) == -1) {
+			continue;
+		}
 		var dkeys = [];
 		var _g_current1 = 0;
 		var _g_array1 = vkeys;
@@ -616,57 +843,116 @@ VilToDrawer.run = function(opt) {
 		}
 		var ln = opt.getLayerName(li,true);
 		dkLayers[ln] = dkeys;
+		dkLayerList.push(dkeys);
 		layerNames.push(ln);
 	}
-	var dCombos = [];
-	var _g = 0;
-	var _g1 = vkm.combo;
-	while(_g < _g1.length) {
-		var vCombo = _g1[_g];
-		++_g;
-		var iResult = vCombo.length - 1;
-		var inKeys = [];
-		var _g2 = 0;
-		var _g3 = iResult;
-		while(_g2 < _g3) {
-			var i = _g2++;
-			if(vial_VialKey.isValid(vCombo[i])) {
-				inKeys.push(vCombo[i]);
+	var extraStyle = [];
+	if(opt.markNonKeysAs != null) {
+		var found = false;
+		var trns = vial_VialKeyNames.map.h["KC_TRNS"];
+		var isNon = function(dk) {
+			if(dk != null) {
+				return dk == trns;
+			} else {
+				return true;
 			}
-		}
-		if(inKeys.length < 2) {
-			continue;
-		}
-		var cResult = vCombo[iResult];
-		if(!vial_VialKey.isValid(cResult)) {
-			continue;
-		}
-		var _g_current = 0;
-		var _g_array = vLayers;
-		while(_g_current < _g_array.length) {
-			var _g_value = _g_array[_g_current];
-			var _g_key = _g_current++;
-			var li = _g_key;
-			var vKeys = _g_value;
-			var keyPos = [];
-			var _g4 = 0;
-			while(_g4 < inKeys.length) {
-				var key = inKeys[_g4];
-				++_g4;
-				var kp = vKeys.indexOf(key);
-				if(kp >= 0) {
-					keyPos.push(kp);
-				} else {
-					break;
-				}
-			}
-			if(keyPos.length < inKeys.length) {
+		};
+		var _g = 0;
+		var _g1 = dkLayerList[0].length;
+		while(_g < _g1) {
+			var k = _g++;
+			if(!isNon(dkLayerList[0][k])) {
 				continue;
 			}
-			dCombos.push({ p : keyPos, k : vial_VialKey.toDrawerKey(cResult,opt), l : [opt.getLayerName(li,true)]});
+			var _g2 = [];
+			var _g3 = 0;
+			var _g4 = dkLayerList;
+			while(_g3 < _g4.length) {
+				var v = _g4[_g3];
+				++_g3;
+				if(!isNon(v[k])) {
+					_g2.push(v);
+				}
+			}
+			if(_g2.length != 0) {
+				continue;
+			}
+			var _g5 = 0;
+			while(_g5 < dkLayerList.length) {
+				var dkeys = dkLayerList[_g5];
+				++_g5;
+				var dk = drawer_DrawerKey.toExt(dkeys[k]);
+				dk.t = "";
+				dk.type = opt.markNonKeysAs;
+				dkeys[k] = dk;
+				found = true;
+			}
+		}
+		if(found) {
+			switch(opt.markNonKeysAs) {
+			case "hidden":
+				extraStyle = extraStyle.concat(["rect.hidden, rect.combo.hidden {","\t" + "fill: transparent;","\t" + "stroke-width: 0;","}"]);
+				break;
+			case "unused":
+				extraStyle = extraStyle.concat(["rect.unused, rect.combo.unused {","\t" + "fill: transparent;","\t" + "stroke-dasharray: 4, 6;","\t" + "stroke-width: 2;","}"]);
+				break;
+			}
+		}
+	}
+	var dCombos = [];
+	if(vkm.combo != null) {
+		var _g = 0;
+		var _g1 = vkm.combo;
+		while(_g < _g1.length) {
+			var vCombo = _g1[_g];
+			++_g;
+			var iResult = vCombo.length - 1;
+			var inKeys = [];
+			var _g2 = 0;
+			var _g3 = iResult;
+			while(_g2 < _g3) {
+				var i = _g2++;
+				if(vial_VialKey.isValid(vCombo[i])) {
+					inKeys.push(vCombo[i]);
+				}
+			}
+			if(inKeys.length < 2) {
+				continue;
+			}
+			var cResult = vCombo[iResult];
+			if(!vial_VialKey.isValid(cResult)) {
+				continue;
+			}
+			var _g_current = 0;
+			var _g_array = vLayers;
+			while(_g_current < _g_array.length) {
+				var _g_value = _g_array[_g_current];
+				var _g_key = _g_current++;
+				var li = _g_key;
+				var vKeys = _g_value;
+				var keyPos = [];
+				var _g4 = 0;
+				while(_g4 < inKeys.length) {
+					var key = inKeys[_g4];
+					++_g4;
+					var kp = vKeys.indexOf(key);
+					if(kp >= 0) {
+						keyPos.push(kp);
+					} else {
+						break;
+					}
+				}
+				if(keyPos.length < inKeys.length) {
+					continue;
+				}
+				dCombos.push({ p : keyPos, k : vial_VialKey.toDrawerKey(cResult,opt), l : [opt.getLayerName(li,true)]});
+			}
 		}
 	}
 	var dkm = { layout : { qmk_keyboard : opt.qmkKeyboard}, layers : dkLayers, combos : dCombos};
+	if(extraStyle.length > 0) {
+		dkm.draw_config = { svg_extra_style : extraStyle.join("\n")};
+	}
 	if(opt.qmkLayout != null && opt.qmkLayout != "") {
 		dkm.layout.qmk_layout = opt.qmkLayout;
 	}
@@ -678,8 +964,13 @@ VilToDrawer.runTxt = function(opt) {
 };
 var VilToDrawerOpt = function() {
 	this.keyOverrides = [];
+	this.rangeDefs = [];
 	this.moveDefs = [];
 	this.layerNames = [];
+	this.includeLayers = [];
+	this.omitM1 = false;
+	this.markNonKeysAs = null;
+	this.omitNonKeys = 0;
 	this.mirrorRightHalf = false;
 	this.halfAfterHalf = false;
 	this.qmkLayout = null;
@@ -687,14 +978,32 @@ var VilToDrawerOpt = function() {
 };
 VilToDrawerOpt.__name__ = true;
 VilToDrawerOpt.prototype = {
-	vil: null
+	root: null
+	,isVIA: null
 	,qmkKeyboard: null
 	,qmkLayout: null
 	,halfAfterHalf: null
 	,mirrorRightHalf: null
+	,omitNonKeys: null
+	,markNonKeysAs: null
+	,omitM1: null
+	,includeLayers: null
 	,layerNames: null
 	,moveDefs: null
+	,rangeDefs: null
 	,keyOverrides: null
+	,log: function(level,v) {
+		haxe_Log.trace("[" + level + "]",{ fileName : "src/VilToDrawerOpt.hx", lineNumber : 33, className : "VilToDrawerOpt", methodName : "log", customParams : [v == null ? "null" : Std.string(v)]});
+	}
+	,info: function(v) {
+		this.log("info",v);
+	}
+	,warn: function(v) {
+		this.log("warn",v);
+	}
+	,error: function(v) {
+		this.log("error",v);
+	}
 	,getLayerName: function(i,long) {
 		if(i < this.layerNames.length) {
 			var l = this.layerNames[i];
@@ -708,10 +1017,14 @@ VilToDrawerOpt.prototype = {
 		}
 	}
 	,parseVil: function(txt) {
-		this.vil = JSON.parse(txt);
+		this.root = JSON.parse(txt);
+		this.isVIA = this.root.layers != null;
 	}
 	,parseLayerNames: function(txt) {
 		txt = StringTools.trim(StringTools.replace(txt,"\r",""));
+		if(txt == "") {
+			return;
+		}
 		var rx = VilToDrawerOpt.rxLayerShortLong;
 		var _g = 0;
 		var _g1 = txt.split("\n");
@@ -732,30 +1045,78 @@ VilToDrawerOpt.prototype = {
 	,parseMoveDefs: function(txt) {
 		var _gthis = this;
 		tools_ERegTools.each(VilToDrawerOpt.rxMoveDef,txt,function(rx) {
-			_gthis.moveDefs.push({ srcRow : Std.parseInt(rx.matched(1)), srcCol : Std.parseInt(rx.matched(2)), dstRow : Std.parseInt(rx.matched(3)), dstCol : Std.parseInt(rx.matched(4))});
+			var srcCol = Std.parseInt(rx.matched(2));
+			var ns = rx.matched(3);
+			var n;
+			if(ns != null) {
+				n = Std.parseInt(ns);
+			} else {
+				ns = rx.matched(4);
+				if(ns != null) {
+					n = Std.parseInt(ns) + 1 - srcCol;
+				} else {
+					n = 1;
+				}
+			}
+			var at = 5;
+			_gthis.moveDefs.push({ srcRow : Std.parseInt(rx.matched(1)), srcCol : srcCol, count : n, dstRow : Std.parseInt(rx.matched(at)), dstCol : Std.parseInt(rx.matched(at + 1)), rule : rx.matched(0)});
+		});
+	}
+	,parseRangeDefs: function(txt) {
+		var _gthis = this;
+		tools_ERegTools.each(VilToDrawerOpt.rxRangeDef,txt,function(rx) {
+			var col = Std.parseInt(rx.matched(2));
+			var tillStr = rx.matched(3);
+			var count;
+			if(tillStr != null) {
+				var till = Std.parseInt(rx.matched(3));
+				count = till + 1 - col;
+			} else {
+				count = 1;
+			}
+			_gthis.rangeDefs.push({ row : Std.parseInt(rx.matched(1)), col : col, count : count, rule : rx.matched(0)});
+		});
+	}
+	,parseIncludeLayers: function(txt) {
+		var _gthis = this;
+		tools_ERegTools.each(new EReg("\\d+","g"),txt,function(rx) {
+			var s = rx.matched(0);
+			var i = Std.parseInt(s);
+			if(i == null) {
+				_gthis.error("\"" + s + "\" is not a valid layer number");
+			} else {
+				_gthis.includeLayers.push(i);
+			}
 		});
 	}
 	,parseKeyOverrides: function(txt) {
 		var _gthis = this;
 		tools_ERegTools.each(VilToDrawerOpt.rxKeyOverride,txt,function(rx) {
-			_gthis.keyOverrides.push({ layer : Std.parseInt(rx.matched(1)), row : Std.parseInt(rx.matched(2)), col : Std.parseInt(rx.matched(3)), key : rx.matched(4)});
+			_gthis.keyOverrides.push({ layer : Std.parseInt(rx.matched(1)), row : Std.parseInt(rx.matched(2)), col : Std.parseInt(rx.matched(3)), key : rx.matched(4), rule : rx.matched(0)});
 		});
 	}
 	,__class__: VilToDrawerOpt
 };
 var drawer_DrawerKey = {};
 drawer_DrawerKey.isFlat = function(this1) {
-	return typeof(this1) == "string";
+	if(this1 != null) {
+		return typeof(this1) == "string";
+	} else {
+		return true;
+	}
 };
 drawer_DrawerKey.toExt = function(this1) {
-	if(typeof(this1) == "string") {
+	if(this1 == null) {
+		return { t : ""};
+	}
+	if(drawer_DrawerKey.isFlat(this1)) {
 		return { t : this1};
 	} else {
 		return this1;
 	}
 };
 drawer_DrawerKey.toFlat = function(this1,a) {
-	if(typeof(this1) == "string") {
+	if(drawer_DrawerKey.isFlat(this1)) {
 		return this1;
 	}
 	return Reflect.field(this1,a);
@@ -1290,6 +1651,8 @@ js_Browser.createXMLHttpRequest = function() {
 	}
 	throw haxe_Exception.thrown("Unable to create XMLHttpRequest object.");
 };
+var tools_BuildDate = function() { };
+tools_BuildDate.__name__ = true;
 var tools_ERegTools = function() { };
 tools_ERegTools.__name__ = true;
 tools_ERegTools.escapeRx = function(s) {
@@ -1302,6 +1665,434 @@ tools_ERegTools.each = function(r,s,f) {
 		f(r);
 		i = p.pos + p.len;
 	}
+};
+var tools_JsonParserWithComments = function(str) {
+	this.str = str;
+	this.pos = 0;
+};
+tools_JsonParserWithComments.__name__ = true;
+tools_JsonParserWithComments.parse = function(str) {
+	return new tools_JsonParserWithComments(str).doParse();
+};
+tools_JsonParserWithComments.prototype = {
+	str: null
+	,pos: null
+	,doParse: function() {
+		var result = this.parseRec();
+		var c;
+		while(true) {
+			c = this.str.charCodeAt(this.pos++);
+			var c1 = c;
+			if(!(c1 == c1)) {
+				break;
+			}
+			switch(c) {
+			case 9:case 10:case 13:case 32:
+				break;
+			default:
+				this.invalidChar();
+			}
+		}
+		return result;
+	}
+	,parseRec: function() {
+		while(true) {
+			var c = this.str.charCodeAt(this.pos++);
+			switch(c) {
+			case 9:case 10:case 13:case 32:
+				break;
+			case 34:case 39:
+				return this.parseString(c);
+			case 45:case 48:case 49:case 50:case 51:case 52:case 53:case 54:case 55:case 56:case 57:
+				var c1 = c;
+				var start = this.pos - 1;
+				var minus = c1 == 45;
+				var digit = !minus;
+				var zero = c1 == 48;
+				var point = false;
+				var e = false;
+				var pm = false;
+				var end = false;
+				do {
+					c1 = this.str.charCodeAt(this.pos++);
+					switch(c1) {
+					case 43:case 45:
+						if(!e || pm) {
+							this.invalidNumber(start);
+						}
+						digit = false;
+						pm = true;
+						break;
+					case 46:
+						if(minus || point || e) {
+							this.invalidNumber(start);
+						}
+						digit = false;
+						point = true;
+						break;
+					case 48:
+						if(zero && !point) {
+							this.invalidNumber(start);
+						}
+						if(minus) {
+							minus = false;
+							zero = true;
+						}
+						digit = true;
+						break;
+					case 49:case 50:case 51:case 52:case 53:case 54:case 55:case 56:case 57:
+						if(zero && !point) {
+							this.invalidNumber(start);
+						}
+						if(minus) {
+							minus = false;
+						}
+						digit = true;
+						zero = false;
+						break;
+					case 69:case 101:
+						if(minus || zero || e) {
+							this.invalidNumber(start);
+						}
+						digit = false;
+						e = true;
+						break;
+					default:
+						if(!digit) {
+							this.invalidNumber(start);
+						}
+						this.pos--;
+						end = true;
+					}
+				} while(!end);
+				var f = parseFloat(HxOverrides.substr(this.str,start,this.pos - start));
+				if(point) {
+					return f;
+				} else {
+					var i = f | 0;
+					if(i == f) {
+						return i;
+					} else {
+						return f;
+					}
+				}
+				break;
+			case 47:
+				if(this.str.charCodeAt(this.pos) == 47) {
+					this.pos++;
+					while(this.pos < this.str.length) {
+						c = this.str.charCodeAt(this.pos);
+						if(c == 13 || c == 10) {
+							break;
+						} else {
+							this.pos++;
+						}
+					}
+				} else if(this.str.charCodeAt(this.pos) == 42) {
+					this.pos++;
+					while(this.pos < this.str.length) {
+						c = this.str.charCodeAt(this.pos);
+						var tmp;
+						if(c == 42) {
+							var offset = 1;
+							if(offset == null) {
+								offset = 0;
+							}
+							tmp = this.str.charCodeAt(this.pos + offset) == 47;
+						} else {
+							tmp = false;
+						}
+						if(tmp) {
+							this.pos += 2;
+							break;
+						} else {
+							this.pos += 1;
+						}
+					}
+				} else {
+					this.invalidChar();
+				}
+				break;
+			case 91:
+				var arr = [];
+				var comma = null;
+				while(true) {
+					var c2 = this.str.charCodeAt(this.pos++);
+					switch(c2) {
+					case 9:case 10:case 13:case 32:
+						break;
+					case 44:
+						if(comma) {
+							comma = false;
+						} else {
+							this.invalidChar();
+						}
+						break;
+					case 93:
+						return arr;
+					default:
+						if(comma) {
+							this.invalidChar();
+						}
+						this.pos--;
+						arr.push(this.parseRec());
+						comma = true;
+					}
+				}
+				break;
+			case 102:
+				var save = this.pos;
+				if(this.str.charCodeAt(this.pos++) != 97 || this.str.charCodeAt(this.pos++) != 108 || this.str.charCodeAt(this.pos++) != 115 || this.str.charCodeAt(this.pos++) != 101) {
+					this.pos = save;
+					this.invalidChar();
+				}
+				return false;
+			case 110:
+				var save1 = this.pos;
+				if(this.str.charCodeAt(this.pos++) != 117 || this.str.charCodeAt(this.pos++) != 108 || this.str.charCodeAt(this.pos++) != 108) {
+					this.pos = save1;
+					this.invalidChar();
+				}
+				return null;
+			case 116:
+				var save2 = this.pos;
+				if(this.str.charCodeAt(this.pos++) != 114 || this.str.charCodeAt(this.pos++) != 117 || this.str.charCodeAt(this.pos++) != 101) {
+					this.pos = save2;
+					this.invalidChar();
+				}
+				return true;
+			case 123:
+				var obj = { };
+				var field = null;
+				var comma1 = null;
+				while(true) {
+					var c3 = this.str.charCodeAt(this.pos++);
+					switch(c3) {
+					case 9:case 10:case 13:case 32:
+						break;
+					case 34:
+						if(field != null || comma1) {
+							this.invalidChar();
+						}
+						field = this.parseString();
+						break;
+					case 44:
+						if(comma1) {
+							comma1 = false;
+						} else {
+							this.invalidChar();
+						}
+						break;
+					case 58:
+						if(field == null) {
+							this.invalidChar();
+						}
+						obj[field] = this.parseRec();
+						field = null;
+						comma1 = true;
+						break;
+					case 125:
+						if(field != null) {
+							this.invalidChar();
+						}
+						return obj;
+					default:
+						if(c3 == 95 || c3 >= 97 && c3 <= 122 || c3 >= 65 && c3 <= 90) {
+							if(field != null || comma1) {
+								this.invalidChar();
+							}
+							var start1 = this.pos - 1;
+							while(this.pos < this.str.length) {
+								c3 = this.str.charCodeAt(this.pos);
+								if(c3 == 95 || c3 >= 97 && c3 <= 122 || c3 >= 65 && c3 <= 90 || c3 >= 48 && c3 <= 57) {
+									this.pos++;
+								} else {
+									break;
+								}
+							}
+							field = this.str.substring(start1,this.pos);
+						} else {
+							this.invalidChar();
+						}
+					}
+				}
+				break;
+			default:
+				this.invalidChar();
+			}
+		}
+	}
+	,parseString: function(quoteChar) {
+		if(quoteChar == null) {
+			quoteChar = 34;
+		}
+		var start = this.pos;
+		var buf = null;
+		var prev = -1;
+		while(true) {
+			var c = this.str.charCodeAt(this.pos++);
+			if(c == quoteChar) {
+				break;
+			}
+			if(c == 92) {
+				if(buf == null) {
+					buf = new StringBuf();
+				}
+				var s = this.str;
+				var len = this.pos - start - 1;
+				buf.b += len == null ? HxOverrides.substr(s,start,null) : HxOverrides.substr(s,start,len);
+				c = this.str.charCodeAt(this.pos++);
+				if(c != 117 && prev != -1) {
+					buf.b += String.fromCodePoint(65533);
+					prev = -1;
+				}
+				switch(c) {
+				case 34:case 39:case 47:case 92:
+					buf.b += String.fromCodePoint(c);
+					break;
+				case 98:
+					buf.b += String.fromCodePoint(8);
+					break;
+				case 102:
+					buf.b += String.fromCodePoint(12);
+					break;
+				case 110:
+					buf.b += String.fromCodePoint(10);
+					break;
+				case 114:
+					buf.b += String.fromCodePoint(13);
+					break;
+				case 116:
+					buf.b += String.fromCodePoint(9);
+					break;
+				case 117:
+					var uc = Std.parseInt("0x" + HxOverrides.substr(this.str,this.pos,4));
+					this.pos += 4;
+					if(prev != -1) {
+						if(uc < 56320 || uc > 57343) {
+							buf.b += String.fromCodePoint(65533);
+							prev = -1;
+						} else {
+							buf.b += String.fromCodePoint(((prev - 55296 << 10) + (uc - 56320) + 65536));
+							prev = -1;
+						}
+					} else if(uc >= 55296 && uc <= 56319) {
+						prev = uc;
+					} else {
+						buf.b += String.fromCodePoint(uc);
+					}
+					break;
+				default:
+					throw haxe_Exception.thrown("Invalid escape sequence \\" + String.fromCodePoint(c) + " at position " + (this.pos - 1));
+				}
+				start = this.pos;
+			} else if(c != c) {
+				throw haxe_Exception.thrown("Unclosed string");
+			}
+		}
+		if(prev != -1) {
+			buf.b += String.fromCodePoint(65533);
+			prev = -1;
+		}
+		if(buf == null) {
+			return HxOverrides.substr(this.str,start,this.pos - start - 1);
+		} else {
+			var s = this.str;
+			var len = this.pos - start - 1;
+			buf.b += len == null ? HxOverrides.substr(s,start,null) : HxOverrides.substr(s,start,len);
+			return buf.b;
+		}
+	}
+	,parseNumber: function(c) {
+		var start = this.pos - 1;
+		var minus = c == 45;
+		var digit = !minus;
+		var zero = c == 48;
+		var point = false;
+		var e = false;
+		var pm = false;
+		var end = false;
+		do {
+			c = this.str.charCodeAt(this.pos++);
+			switch(c) {
+			case 43:case 45:
+				if(!e || pm) {
+					this.invalidNumber(start);
+				}
+				digit = false;
+				pm = true;
+				break;
+			case 46:
+				if(minus || point || e) {
+					this.invalidNumber(start);
+				}
+				digit = false;
+				point = true;
+				break;
+			case 48:
+				if(zero && !point) {
+					this.invalidNumber(start);
+				}
+				if(minus) {
+					minus = false;
+					zero = true;
+				}
+				digit = true;
+				break;
+			case 49:case 50:case 51:case 52:case 53:case 54:case 55:case 56:case 57:
+				if(zero && !point) {
+					this.invalidNumber(start);
+				}
+				if(minus) {
+					minus = false;
+				}
+				digit = true;
+				zero = false;
+				break;
+			case 69:case 101:
+				if(minus || zero || e) {
+					this.invalidNumber(start);
+				}
+				digit = false;
+				e = true;
+				break;
+			default:
+				if(!digit) {
+					this.invalidNumber(start);
+				}
+				this.pos--;
+				end = true;
+			}
+		} while(!end);
+		var f = parseFloat(HxOverrides.substr(this.str,start,this.pos - start));
+		if(point) {
+			return f;
+		} else {
+			var i = f | 0;
+			if(i == f) {
+				return i;
+			} else {
+				return f;
+			}
+		}
+	}
+	,nextChar: function() {
+		return this.str.charCodeAt(this.pos++);
+	}
+	,peekChar: function(offset) {
+		if(offset == null) {
+			offset = 0;
+		}
+		return this.str.charCodeAt(this.pos + offset);
+	}
+	,invalidChar: function() {
+		this.pos--;
+		throw haxe_Exception.thrown("Invalid char " + this.str.charCodeAt(this.pos) + " at position " + this.pos);
+	}
+	,invalidNumber: function(start) {
+		throw haxe_Exception.thrown("Invalid number at position " + start + ": " + HxOverrides.substr(this.str,start,this.pos - start));
+	}
+	,__class__: tools_JsonParserWithComments
 };
 var tools_JsonPrinterWithOrder = function(replacer,space) {
 	this.replacer = replacer;
@@ -1527,8 +2318,13 @@ tools_JsonPrinterWithOrder.prototype = {
 	}
 	,__class__: tools_JsonPrinterWithOrder
 };
+var via_ViaKeyNames = function() { };
+via_ViaKeyNames.__name__ = true;
 var vial_VialKey = {};
-vial_VialKey.toDrawerKey = function(this1,opt) {
+vial_VialKey.toDrawerKey = function(this1,opt,oneLine) {
+	if(oneLine == null) {
+		oneLine = false;
+	}
 	var kc = this1;
 	if(kc == null || kc == "" || kc == "KC_NO") {
 		return null;
@@ -1544,9 +2340,18 @@ vial_VialKey.toDrawerKey = function(this1,opt) {
 		var li = Std.parseInt(vial_VialKey.toDrawerKey_rx_layer.matched(2));
 		return vial_VialKey.toDrawerKey_rx_layer.matched(1) + " " + opt.getLayerName(li,false);
 	}
+	if(vial_VialKey.toDrawerKey_rx_td.match(kc)) {
+		var ti = Std.parseInt(vial_VialKey.toDrawerKey_rx_td.matched(1));
+		var td = opt.root.tap_dance[ti];
+		if(td != null) {
+			return { s : kc, t : drawer_DrawerKey.toFlat(vial_VialKey.toDrawerKey(td[0],opt,true),"t"), h : drawer_DrawerKey.toFlat(vial_VialKey.toDrawerKey(td[1],opt,true),"t")};
+		}
+	}
 	if(vial_VialKey.toDrawerKey_rx_lt.match(kc)) {
-		var t = vial_VialKey.toDrawerKey_rx_lt.matched(2);
-		var h = "MO(" + vial_VialKey.toDrawerKey_rx_lt.matched(1) + ")";
+		var t = vial_VialKey.toDrawerKey_rx_lt.matched(3);
+		var tmp = vial_VialKey.toDrawerKey_rx_lt.matched(1);
+		var lts = tmp != null ? tmp : vial_VialKey.toDrawerKey_rx_lt.matched(2);
+		var h = "MO(" + lts + ")";
 		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(t,opt));
 		dk.h = drawer_DrawerKey.toFlat(vial_VialKey.toDrawerKey(h,opt),"t");
 		return dk;
@@ -1563,6 +2368,20 @@ vial_VialKey.toDrawerKey = function(this1,opt) {
 	}
 	if(vial_VialKey.toDrawerKey_rx_pair.match(kc)) {
 		var f = vial_VialKey.toDrawerKey_rx_pair.matched(1);
+		switch(f) {
+		case "A":
+			f = "Alt";
+			break;
+		case "C":
+			f = "Ctrl";
+			break;
+		case "G":
+			f = "Gui";
+			break;
+		case "S":
+			f = "Shift";
+			break;
+		}
 		var k = vial_VialKey.toDrawerKey_rx_pair.matched(2);
 		var dk = drawer_DrawerKey.toExt(vial_VialKey.toDrawerKey(k,opt));
 		if(dk.s != null) {
@@ -1571,17 +2390,20 @@ vial_VialKey.toDrawerKey = function(this1,opt) {
 		dk.s = f + "+";
 		return dk;
 	}
-	if(vial_VialKey.rx_json.match(kc)) {
+	if(vial_VialKey.toDrawerKey_rx_json.match(kc)) {
 		try {
-			return JSON.parse(kc);
+			return new tools_JsonParserWithComments(kc).doParse();
 		} catch( _g ) {
 			var x = haxe_Exception.caught(_g).unwrap();
-			haxe_Log.trace("Error parsing JSON \"" + kc + "\":",{ fileName : "src/vial/VialKey.hx", lineNumber : 75, className : "vial._VialKey.VialKey_Impl_", methodName : "toDrawerKey", customParams : [x]});
+			haxe_Log.trace("Error parsing JSON \"" + kc + "\":",{ fileName : "src/vial/VialKey.hx", lineNumber : 110, className : "vial._VialKey.VialKey_Impl_", methodName : "toDrawerKey", customParams : [x]});
 			return kc;
 		}
 	}
-	var fullName = vial_VialKeyNames.map.h[kc];
+	var fullName = opt.isVIA ? via_ViaKeyNames.map.h[kc] : vial_VialKeyNames.map.h[kc];
 	if(fullName != null) {
+		if(oneLine) {
+			return StringTools.replace(fullName,"\n","  ");
+		}
 		if(Object.prototype.hasOwnProperty.call(vial_VialKeysWithShiftState.map.h,kc)) {
 			var parts = fullName.split("\n");
 			if(parts.length > 1) {
@@ -1596,6 +2418,9 @@ vial_VialKey.toDrawerKey = function(this1,opt) {
 	return kc;
 };
 vial_VialKey.isValid = function(this1) {
+	if(typeof(this1) == "number" && this1 == -1) {
+		return false;
+	}
 	if(this1 == null) {
 		return false;
 	} else {
@@ -1605,6 +2430,13 @@ vial_VialKey.isValid = function(this1) {
 		default:
 			return true;
 		}
+	}
+};
+vial_VialKey.isM1 = function(this1) {
+	if(typeof(this1) == "number") {
+		return this1 == -1;
+	} else {
+		return false;
 	}
 };
 var vial_VialKeyNames = function() { };
@@ -1655,19 +2487,27 @@ Array.__name__ = true;
 Date.prototype.__class__ = Date;
 Date.__name__ = "Date";
 js_Boot.__toStr = ({ }).toString;
+Main.buildDate = "2023-09-16--17-07-37";
 Main.fdVil = window.document.getElementById("vil");
 Main.fdOut = window.document.getElementById("out");
+Main.fdLog = window.document.getElementById("log");
 Main.fmVil = window.document.getElementById("vil-form");
 Main.ffVil = window.document.getElementById("vil-picker");
 Main.cbHalfAfterHalf = window.document.getElementById("half-after-half");
 Main.cbMirrorRightHalf = window.document.getElementById("mirror-right-half");
+Main.ddOmitNonKeys = window.document.getElementById("omit-non-keys");
+Main.ddMarkNonKeysAs = window.document.getElementById("mark-non-keys");
+Main.cbOmitM1 = window.document.getElementById("omit-m1");
 Main.fdKeyboard = window.document.getElementById("keyboard");
 Main.fdLayout = window.document.getElementById("layout");
 Main.fdMoveDefs = window.document.getElementById("move-defs");
+Main.fdKeyRanges = window.document.getElementById("key-ranges");
 Main.fdLayerNames = window.document.getElementById("layer-names");
+Main.fdIncludeLayers = window.document.getElementById("include-layers");
 Main.fdKeyOverrides = window.document.getElementById("key-overrides");
 Main.btConvert = window.document.getElementById("convert");
-Main.btSample = window.document.getElementById("sample");
+Main.cbCopyAfterConvert = window.document.getElementById("copy-after-convert");
+Main.ddSample = window.document.getElementById("sample");
 Main.btLoad = window.document.getElementById("load-settings");
 Main.btSave = window.document.getElementById("save-settings");
 Main.btClear = window.document.getElementById("clear");
@@ -1676,15 +2516,330 @@ Main.ffLoad = window.document.getElementById("load-picker");
 Main.fields = [];
 VilToDrawer.needsHxOrder = false;
 VilToDrawerOpt.rxLayerShortLong = new EReg("^(\\S{1,6})(?::.*|\\s+\\(.*\\))$","");
-VilToDrawerOpt.rxMoveDef = new EReg("^\\s*(\\d+),\\s*(\\d+)\\s*=>\\s*(\\d+),\\s*(\\d+)","gm");
+VilToDrawerOpt.rxMoveDef = new EReg("^\\s*" + "(\\d+),\\s*" + "(\\d+)\\s*" + "(?:" + "\\[\\s*" + "(\\d+)" + "\\s*\\]\\s*" + "|" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?" + "=>\\s*" + "(\\d+),\\s*" + "(\\d+)" + "\\s*$","gm");
+VilToDrawerOpt.rxRangeDef = new EReg("^\\s*" + "(\\d+),\\s*" + "(\\d+)\\s*" + "(?:" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?" + "^","gm");
 VilToDrawerOpt.rxKeyOverride = new EReg("^\\s*(\\d+),\\s*(\\d+),\\s*(\\d+)\\s*=>\\s*(.+)","gm");
 tools_ERegTools.escapeRx_1 = new EReg("([.*+?^${}()|[\\]\\/\\\\])","g");
+via_ViaKeyNames.map = (function($this) {
+	var $r;
+	var _g = new haxe_ds_StringMap();
+	_g.h["KC_NO"] = "";
+	_g.h["KC_TRNS"] = "▽";
+	_g.h["KC_ESC"] = "Esc";
+	_g.h["KC_A"] = "A";
+	_g.h["KC_B"] = "B";
+	_g.h["KC_C"] = "C";
+	_g.h["KC_D"] = "D";
+	_g.h["KC_E"] = "E";
+	_g.h["KC_F"] = "F";
+	_g.h["KC_G"] = "G";
+	_g.h["KC_H"] = "H";
+	_g.h["KC_I"] = "I";
+	_g.h["KC_J"] = "J";
+	_g.h["KC_K"] = "K";
+	_g.h["KC_L"] = "L";
+	_g.h["KC_M"] = "M";
+	_g.h["KC_N"] = "N";
+	_g.h["KC_O"] = "O";
+	_g.h["KC_P"] = "P";
+	_g.h["KC_Q"] = "Q";
+	_g.h["KC_R"] = "R";
+	_g.h["KC_S"] = "S";
+	_g.h["KC_T"] = "T";
+	_g.h["KC_U"] = "U";
+	_g.h["KC_V"] = "V";
+	_g.h["KC_W"] = "W";
+	_g.h["KC_X"] = "X";
+	_g.h["KC_Y"] = "Y";
+	_g.h["KC_Z"] = "Z";
+	_g.h["KC_1"] = "!\n1";
+	_g.h["KC_2"] = "@\n2";
+	_g.h["KC_3"] = "#\n3";
+	_g.h["KC_4"] = "$\n4";
+	_g.h["KC_5"] = "%\n5";
+	_g.h["KC_6"] = "^\n6";
+	_g.h["KC_7"] = "&\n7";
+	_g.h["KC_8"] = "*\n8";
+	_g.h["KC_9"] = "(\n9";
+	_g.h["KC_0"] = ")\n0";
+	_g.h["KC_MINS"] = "_\n-";
+	_g.h["KC_EQL"] = "+\n=";
+	_g.h["KC_GRV"] = "~\n`";
+	_g.h["KC_LBRC"] = "{\n[";
+	_g.h["KC_RBRC"] = "}\n]";
+	_g.h["KC_BSLS"] = "|\n\\";
+	_g.h["KC_SCLN"] = ":\n;";
+	_g.h["KC_QUOT"] = "\"\n'";
+	_g.h["KC_COMM"] = "<\n,";
+	_g.h["KC_DOT"] = ">\n.";
+	_g.h["KC_SLSH"] = "?\n/";
+	_g.h["KC_PEQL"] = "=";
+	_g.h["KC_PCMM"] = ",";
+	_g.h["KC_F1"] = "F1";
+	_g.h["KC_F2"] = "F2";
+	_g.h["KC_F3"] = "F3";
+	_g.h["KC_F4"] = "F4";
+	_g.h["KC_F5"] = "F5";
+	_g.h["KC_F6"] = "F6";
+	_g.h["KC_F7"] = "F7";
+	_g.h["KC_F8"] = "F8";
+	_g.h["KC_F9"] = "F9";
+	_g.h["KC_F10"] = "F10";
+	_g.h["KC_F11"] = "F11";
+	_g.h["KC_F12"] = "F12";
+	_g.h["KC_PSCR"] = "Print Screen";
+	_g.h["KC_SLCK"] = "Scroll Lock";
+	_g.h["KC_PAUS"] = "Pause";
+	_g.h["KC_TAB"] = "Tab";
+	_g.h["KC_BSPC"] = "Backspace";
+	_g.h["KC_INS"] = "Insert";
+	_g.h["KC_DEL"] = "Del";
+	_g.h["KC_HOME"] = "Home";
+	_g.h["KC_END"] = "End";
+	_g.h["KC_PGUP"] = "Page Up";
+	_g.h["KC_PGDN"] = "Page Down";
+	_g.h["KC_NLCK"] = "Num\nLock";
+	_g.h["KC_CAPS"] = "Caps Lock";
+	_g.h["KC_ENT"] = "Enter";
+	_g.h["KC_P1"] = "1";
+	_g.h["KC_P2"] = "2";
+	_g.h["KC_P3"] = "3";
+	_g.h["KC_P4"] = "4";
+	_g.h["KC_P5"] = "5";
+	_g.h["KC_P6"] = "6";
+	_g.h["KC_P7"] = "7";
+	_g.h["KC_P8"] = "8";
+	_g.h["KC_P9"] = "9";
+	_g.h["KC_P0"] = "0";
+	_g.h["KC_PSLS"] = "÷";
+	_g.h["KC_PAST"] = "×";
+	_g.h["KC_PMNS"] = "-";
+	_g.h["KC_PPLS"] = "+";
+	_g.h["KC_PDOT"] = ".";
+	_g.h["KC_PENT"] = "Num\nEnter";
+	_g.h["KC_LSFT"] = "Left Shift";
+	_g.h["KC_RSFT"] = "Right Shift";
+	_g.h["KC_LCTL"] = "Left Ctrl";
+	_g.h["KC_RCTL"] = "Right Ctrl";
+	_g.h["KC_LGUI"] = "Left Win";
+	_g.h["KC_RGUI"] = "Right Win";
+	_g.h["KC_LALT"] = "Left Alt";
+	_g.h["KC_RALT"] = "Right Alt";
+	_g.h["KC_SPC"] = "Space";
+	_g.h["KC_APP"] = "Menu";
+	_g.h["KC_LEFT"] = "Left";
+	_g.h["KC_DOWN"] = "Down";
+	_g.h["KC_UP"] = "Up";
+	_g.h["KC_RGHT"] = "Right";
+	_g.h["BR_DEC"] = "Bright -";
+	_g.h["BR_INC"] = "Bright +";
+	_g.h["EF_DEC"] = "Effect -";
+	_g.h["EF_INC"] = "Effect +";
+	_g.h["ES_DEC"] = "Effect Speed -";
+	_g.h["ES_INC"] = "Effect Speed +";
+	_g.h["H1_DEC"] = "Color1 Hue -";
+	_g.h["H1_INC"] = "Color1 Hue +";
+	_g.h["H2_DEC"] = "Color2 Hue -";
+	_g.h["H2_INC"] = "Color2 Hue +";
+	_g.h["S1_DEC"] = "Color1 Sat -";
+	_g.h["S1_INC"] = "Color1 Sat +";
+	_g.h["S2_DEC"] = "Color2 Sat -";
+	_g.h["S2_INC"] = "Color2 Sat +";
+	_g.h["KC_VOLD"] = "Vol -";
+	_g.h["KC_VOLU"] = "Vol +";
+	_g.h["KC_MUTE"] = "Mute";
+	_g.h["KC_MPLY"] = "Play";
+	_g.h["KC_MSTP"] = "Media Stop";
+	_g.h["KC_MPRV"] = "Previous";
+	_g.h["KC_MNXT"] = "Next";
+	_g.h["KC_MRWD"] = "Rewind";
+	_g.h["KC_MFFD"] = "Fast Forward";
+	_g.h["KC_MSEL"] = "Select";
+	_g.h["KC_EJCT"] = "Eject";
+	_g.h["MACRO(0)"] = "M0";
+	_g.h["MACRO(1)"] = "M1";
+	_g.h["MACRO(2)"] = "M2";
+	_g.h["MACRO(3)"] = "M3";
+	_g.h["MACRO(4)"] = "M4";
+	_g.h["MACRO(5)"] = "M5";
+	_g.h["MACRO(6)"] = "M6";
+	_g.h["MACRO(7)"] = "M7";
+	_g.h["MACRO(8)"] = "M8";
+	_g.h["MACRO(9)"] = "M9";
+	_g.h["MACRO(10)"] = "M10";
+	_g.h["MACRO(11)"] = "M11";
+	_g.h["MACRO(12)"] = "M12";
+	_g.h["MACRO(13)"] = "M13";
+	_g.h["MACRO(14)"] = "M14";
+	_g.h["MACRO(15)"] = "M15";
+	_g.h["S(KC_GRV)"] = "~";
+	_g.h["S(KC_1)"] = "!";
+	_g.h["S(KC_2)"] = "@";
+	_g.h["S(KC_3)"] = "#";
+	_g.h["S(KC_4)"] = "$";
+	_g.h["S(KC_5)"] = "%";
+	_g.h["S(KC_6)"] = "^";
+	_g.h["S(KC_7)"] = "&";
+	_g.h["S(KC_8)"] = "*";
+	_g.h["S(KC_9)"] = "(";
+	_g.h["S(KC_0)"] = ")";
+	_g.h["S(KC_MINS)"] = "_";
+	_g.h["S(KC_EQL)"] = "+";
+	_g.h["S(KC_LBRC)"] = "{";
+	_g.h["S(KC_RBRC)"] = "}";
+	_g.h["S(KC_BSLS)"] = "|";
+	_g.h["S(KC_SCLN)"] = ":";
+	_g.h["S(KC_QUOT)"] = "\"";
+	_g.h["S(KC_COMM)"] = "<";
+	_g.h["S(KC_DOT)"] = ">";
+	_g.h["S(KC_SLSH)"] = "?";
+	_g.h["KC_NUHS"] = "NUHS";
+	_g.h["KC_NUBS"] = "NUBS";
+	_g.h["KC_RO"] = "Ro";
+	_g.h["KC_JYEN"] = "¥";
+	_g.h["KC_MHEN"] = "無変換";
+	_g.h["KC_HANJ"] = "漢字";
+	_g.h["KC_HAEN"] = "한영";
+	_g.h["KC_HENK"] = "変換";
+	_g.h["KC_KANA"] = "かな";
+	_g.h["KC_GESC"] = "Esc `";
+	_g.h["KC_LSPO"] = "LS (";
+	_g.h["KC_RSPC"] = "RS )";
+	_g.h["KC_LCPO"] = "LC (";
+	_g.h["KC_RCPC"] = "RC )";
+	_g.h["KC_LAPO"] = "LA (";
+	_g.h["KC_RAPC"] = "RA )";
+	_g.h["KC_SFTENT"] = "SftEnt";
+	_g.h["RESET"] = "Reset";
+	_g.h["DEBUG"] = "Debug";
+	_g.h["MAGIC_TOGGLE_NKRO"] = "Toggle NKRO";
+	_g.h["KC_LNUM"] = "Locking Num Lock";
+	_g.h["KC_LCAP"] = "Locking Caps Lock";
+	_g.h["KC_LSCR"] = "Locking Scroll Lock";
+	_g.h["KC_PWR"] = "Power";
+	_g.h["KC_POWER"] = "Power OSX";
+	_g.h["KC_SLEP"] = "Sleep";
+	_g.h["KC_WAKE"] = "Wake";
+	_g.h["KC_CALC"] = "Calc";
+	_g.h["KC_MAIL"] = "Mail";
+	_g.h["KC_HELP"] = "Help";
+	_g.h["KC_STOP"] = "Stop";
+	_g.h["KC_ERAS"] = "Alt Erase";
+	_g.h["KC_AGAIN"] = "Again";
+	_g.h["KC_MENU"] = "Menu";
+	_g.h["KC_UNDO"] = "Undo";
+	_g.h["KC_SELECT"] = "Select";
+	_g.h["KC_EXECUTE"] = "Exec";
+	_g.h["KC_CUT"] = "Cut";
+	_g.h["KC_COPY"] = "Copy";
+	_g.h["KC_PASTE"] = "Paste";
+	_g.h["KC_FIND"] = "Find";
+	_g.h["KC_MYCM"] = "My Comp";
+	_g.h["KC_WWW_HOME"] = "Home";
+	_g.h["KC_WWW_BACK"] = "Back";
+	_g.h["KC_WWW_FORWARD"] = "Forward";
+	_g.h["KC_WWW_STOP"] = "Stop";
+	_g.h["KC_WWW_REFRESH"] = "Refresh";
+	_g.h["KC_WWW_FAVORITES"] = "Favorites";
+	_g.h["KC_WWW_SEARCH"] = "Search";
+	_g.h["KC_BRIU"] = "Screen +";
+	_g.h["KC_BRID"] = "Screen -";
+	_g.h["KC_F13"] = "F13";
+	_g.h["KC_F14"] = "F14";
+	_g.h["KC_F15"] = "F15";
+	_g.h["KC_F16"] = "F16";
+	_g.h["KC_F17"] = "F17";
+	_g.h["KC_F18"] = "F18";
+	_g.h["KC_F19"] = "F19";
+	_g.h["KC_F20"] = "F20";
+	_g.h["KC_F21"] = "F21";
+	_g.h["KC_F22"] = "F22";
+	_g.h["KC_F23"] = "F23";
+	_g.h["KC_F24"] = "F24";
+	_g.h["KC_MS_UP"] = "Mouse ↑";
+	_g.h["KC_MS_DOWN"] = "Mouse ↓";
+	_g.h["KC_MS_LEFT"] = "Mouse ←";
+	_g.h["KC_MS_RIGHT"] = "Mouse →";
+	_g.h["KC_MS_BTN1"] = "Mouse Btn1";
+	_g.h["KC_MS_BTN2"] = "Mouse Btn2";
+	_g.h["KC_MS_BTN3"] = "Mouse Btn3";
+	_g.h["KC_MS_BTN4"] = "Mouse Btn4";
+	_g.h["KC_MS_BTN5"] = "Mouse Btn5";
+	_g.h["KC_MS_BTN6"] = "Mouse Btn6";
+	_g.h["KC_MS_BTN7"] = "Mouse Btn7";
+	_g.h["KC_MS_BTN8"] = "Mouse Btn8";
+	_g.h["KC_MS_WH_UP"] = "Mouse Wh ↑";
+	_g.h["KC_MS_WH_DOWN"] = "Mouse Wh ↓";
+	_g.h["KC_MS_WH_LEFT"] = "Mouse Wh ←";
+	_g.h["KC_MS_WH_RIGHT"] = "Mouse Wh →";
+	_g.h["KC_MS_ACCEL0"] = "Mouse Acc0";
+	_g.h["KC_MS_ACCEL1"] = "Mouse Acc1";
+	_g.h["KC_MS_ACCEL2"] = "Mouse Acc2";
+	_g.h["AU_ON"] = "Audio On";
+	_g.h["AU_OFF"] = "Audio Off";
+	_g.h["AU_TOG"] = "Audio Toggle";
+	_g.h["CLICKY_TOGGLE"] = "Clicky Toggle";
+	_g.h["CLICKY_ENABLE"] = "Clicky Enable";
+	_g.h["CLICKY_DISABLE"] = "Clicky Disable";
+	_g.h["CLICKY_UP"] = "Clicky Up";
+	_g.h["CLICKY_DOWN"] = "Clicky Down";
+	_g.h["CLICKY_RESET"] = "Clicky Reset";
+	_g.h["MU_ON"] = "Music On";
+	_g.h["MU_OFF"] = "Music Off";
+	_g.h["MU_TOG"] = "Music Toggle";
+	_g.h["MU_MOD"] = "Music Mode";
+	_g.h["BL_TOGG"] = "BL Toggle";
+	_g.h["BL_ON"] = "BL On";
+	_g.h["BL_OFF"] = "BL Off";
+	_g.h["BL_DEC"] = "BL -";
+	_g.h["BL_INC"] = "BL +";
+	_g.h["BL_STEP"] = "BL Cycle";
+	_g.h["BL_BRTG"] = "BR Toggle";
+	_g.h["RGB_TOG"] = "RGB Toggle";
+	_g.h["RGB_RMOD"] = "RGB Mode -";
+	_g.h["RGB_MOD"] = "RGB Mode +";
+	_g.h["RGB_HUD"] = "Hue -";
+	_g.h["RGB_HUI"] = "Hue +";
+	_g.h["RGB_SAD"] = "Sat -";
+	_g.h["RGB_SAI"] = "Sat +";
+	_g.h["RGB_VAD"] = "Bright -";
+	_g.h["RGB_VAI"] = "Bright +";
+	_g.h["RGB_SPD"] = "Effect Speed-";
+	_g.h["RGB_SPI"] = "Effect Speed+";
+	_g.h["RGB_M_P"] = "RGB Mode P";
+	_g.h["RGB_M_B"] = "RGB Mode B";
+	_g.h["RGB_M_R"] = "RGB Mode R";
+	_g.h["RGB_M_SW"] = "RGB Mode SW";
+	_g.h["RGB_M_SN"] = "RGB Mode SN";
+	_g.h["RGB_M_K"] = "RGB Mode K";
+	_g.h["RGB_M_X"] = "RGB Mode X";
+	_g.h["RGB_M_G"] = "RGB Mode G";
+	_g.h["CUSTOM(0)"] = "CUSTOM(0)";
+	_g.h["CUSTOM(1)"] = "CUSTOM(1)";
+	_g.h["CUSTOM(2)"] = "CUSTOM(2)";
+	_g.h["CUSTOM(3)"] = "CUSTOM(3)";
+	_g.h["CUSTOM(4)"] = "CUSTOM(4)";
+	_g.h["CUSTOM(5)"] = "CUSTOM(5)";
+	_g.h["CUSTOM(6)"] = "CUSTOM(6)";
+	_g.h["CUSTOM(7)"] = "CUSTOM(7)";
+	_g.h["CUSTOM(8)"] = "CUSTOM(8)";
+	_g.h["CUSTOM(9)"] = "CUSTOM(9)";
+	_g.h["CUSTOM(10)"] = "CUSTOM(10)";
+	_g.h["CUSTOM(11)"] = "CUSTOM(11)";
+	_g.h["CUSTOM(12)"] = "CUSTOM(12)";
+	_g.h["CUSTOM(13)"] = "CUSTOM(13)";
+	_g.h["CUSTOM(14)"] = "CUSTOM(14)";
+	_g.h["CUSTOM(15)"] = "CUSTOM(15)";
+	$r = _g;
+	return $r;
+}(this));
+vial_VialKey.toDrawerKey_rx_json = new EReg("^(?:" + ["\\{" + ".+" + "\\}","\"" + ".+" + "\""].join("|") + ")\\s*$","");
 vial_VialKey.toDrawerKey_rx_pair = new EReg("^(\\w+)" + "\\(" + "(.+)" + "\\)$","");
 vial_VialKey.toDrawerKey_rx_shift = new EReg("^([LR]SFT)" + "\\(" + "(.+)" + "\\)$","");
-vial_VialKey.toDrawerKey_rx_lt = new EReg("^LT(\\d)" + "\\(" + "(.+)" + "\\)$","");
+vial_VialKey.toDrawerKey_rx_lt = new EReg("^" + "(?:" + "LT(\\d)\\(" + "|" + "LT\\((\\d+),\\s*" + ")" + "(.+)" + "\\)" + "$","");
+vial_VialKey.toDrawerKey_rx_td = new EReg("^TD" + "\\(" + "(\\d+)" + "\\)$","");
 vial_VialKey.toDrawerKey_rx_layer = new EReg("^(MO|DF|TG|TT|OSL|TO)" + "\\(" + "(\\d+)" + "\\)$","");
 vial_VialKey.toDrawerKey_rx_modTap = new EReg("^" + "(\\w+)_T" + "\\(" + "(.+)" + "\\)","");
-vial_VialKey.rx_json = new EReg("^\\{.+\\}\\s*$","");
 vial_VialKeyNames.map = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();

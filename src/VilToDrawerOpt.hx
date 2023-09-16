@@ -6,21 +6,41 @@ import tools.ERegTools;
 import vial.VialKeymap;
 import vial.VialKey;
 using StringTools;
+using tools.ERegTools;
 
 /**
  * ...
  * @author YellowAfterlife
  */
 class VilToDrawerOpt {
-	public var vil:VialKeymap;
+	public var root:VialKeymap;
+	public var isVIA:Bool;
 	public var qmkKeyboard:String = null;
 	public var qmkLayout:String = null;
 	public var halfAfterHalf = false;
 	public var mirrorRightHalf = false;
+	public var omitNonKeys = 0;
+	public var markNonKeysAs:String = null;
+	public var omitM1 = false;
+	public var includeLayers:Array<Int> = [];
 	public var layerNames:Array<VilToDrawerLayerName> = [];
 	public var moveDefs:Array<VilToDrawerMoveDef> = [];
+	public var rangeDefs:Array<VilToDrawerRangeDef> = [];
 	public var keyOverrides:Array<VilToDrawerKeyOverride> = [];
 	public function new() {}
+	
+	public dynamic function log(level:String, v:Any) {
+		trace('[$level]', v);
+	}
+	public dynamic function info(v:Any) {
+		log("info", v);
+	}
+	public dynamic function warn(v:Any) {
+		log("warn", v);
+	}
+	public dynamic function error(v:Any) {
+		log("error", v);
+	}
 	
 	public function getLayerName(i:Int, long:Bool) {
 		if (i < layerNames.length) {
@@ -30,12 +50,14 @@ class VilToDrawerOpt {
 	}
 	
 	public function parseVil(txt:String) {
-		vil = Json.parse(txt);
+		root = Json.parse(txt);
+		isVIA = root.layers != null;
 	}
 	
 	static var rxLayerShortLong = ~/^(\S{1,6})(?::.*|\s+\(.*\))$/;
 	public function parseLayerNames(txt:String) {
 		txt = txt.replace("\r", "").trim();
+		if (txt == "") return;
 		var rx = rxLayerShortLong;
 		for (line in txt.split("\n")) {
 			line = line.trim();
@@ -59,15 +81,69 @@ class VilToDrawerOpt {
 		}
 	}
 	
-	static var rxMoveDef = ~/^\s*(\d+),\s*(\d+)\s*=>\s*(\d+),\s*(\d+)/gm;
+	static var rxMoveDef = new EReg("^\\s*"
+		+ "(\\d+),\\s*"
+		+ "(\\d+)\\s*"
+		+ "(?:"
+			+ "\\[\\s*" + "(\\d+)" + "\\s*\\]\\s*" + "|" // row,col[n]
+			+ "\\-\\s*" + "(\\d+)" + "\\s*" // row,col-col2
+		+ ")?"
+		+ "=>\\s*"
+		+ "(\\d+),\\s*"
+		+ "(\\d+)"
+	+ "\\s*$", "gm");
 	public function parseMoveDefs(txt:String) {
 		ERegTools.each(rxMoveDef, txt, function(rx:EReg) {
+			var srcCol = Std.parseInt(rx.matched(2));
+			var ns = rx.matched(3);
+			var n:Int;
+			if (ns != null) {
+				n = Std.parseInt(ns);
+			} else if ((ns = rx.matched(4)) != null) {
+				n = Std.parseInt(ns) + 1 - srcCol;
+			} else n = 1;
+			var at = 5;
 			moveDefs.push({
 				srcRow: Std.parseInt(rx.matched(1)),
-				srcCol: Std.parseInt(rx.matched(2)),
-				dstRow: Std.parseInt(rx.matched(3)),
-				dstCol: Std.parseInt(rx.matched(4)),
+				srcCol: srcCol,
+				count: n,
+				dstRow: Std.parseInt(rx.matched(at)),
+				dstCol: Std.parseInt(rx.matched(at + 1)),
+				rule: rx.matched(0),
 			});
+		});
+	}
+	
+	static var rxRangeDef = new EReg("^\\s*"
+		+ "(\\d+),\\s*"
+		+ "(\\d+)\\s*"
+		+ "(?:" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?"
+	+ "^", "gm");
+	public function parseRangeDefs(txt:String) {
+		ERegTools.each(rxRangeDef, txt, function(rx:EReg) {
+			var col = Std.parseInt(rx.matched(2));
+			var tillStr = rx.matched(3);
+			var count:Int;
+			if (tillStr != null) {
+				var till = Std.parseInt(rx.matched(3));
+				count = till + 1 - col;
+			} else count = 1;
+			rangeDefs.push({
+				row: Std.parseInt(rx.matched(1)),
+				col: col,
+				count: count,
+				rule: rx.matched(0),
+			});
+		});
+	}
+	
+	public function parseIncludeLayers(txt:String) {
+		~/\d+/g.each(txt, function(rx:EReg) {
+			var s = rx.matched(0);
+			var i = Std.parseInt(s);
+			if (i == null) {
+				error('"$s" is not a valid layer number');
+			} else includeLayers.push(i);
 		});
 	}
 	
@@ -79,23 +155,33 @@ class VilToDrawerOpt {
 				row: Std.parseInt(rx.matched(2)),
 				col: Std.parseInt(rx.matched(3)),
 				key: rx.matched(4),
+				rule: rx.matched(0),
 			});
 		});
 	}
 }
 typedef VilToDrawerKeyOverride = {
-	layer:Int,
-	row:Int,
-	col:Int,
-	key:String,
+	var layer:Int;
+	var row:Int;
+	var col:Int;
+	var key:String;
+	var rule:String;
 }
 typedef VilToDrawerLayerName = {
-	short:String,
-	long:String,
+	var short:String;
+	var long:String;
 };
 typedef VilToDrawerMoveDef = {
 	var srcRow:Int;
 	var srcCol:Int;
 	var dstRow:Int;
 	var dstCol:Int;
+	var count:Int;
+	var rule:String;
+};
+typedef VilToDrawerRangeDef = {
+	var row:Int;
+	var col:Int;
+	var count:Int;
+	var rule:String;
 };
