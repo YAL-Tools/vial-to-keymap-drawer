@@ -57,20 +57,40 @@
 		
 		<details>
 			<summary>Keys out of order or too many keys?</summary>
-			<input type="checkbox" id="half-after-half" /> One half after another (instead of row by row)<br/>
-			<input type="checkbox" id="mirror-right-half" /> Mirrored keys on right half<br/>
-			<input type="checkbox" id="omit-m1" /> Omit <code>-1</code> keys<br/>
+			<label>
+				<input type="checkbox" id="half-after-half" />
+				One half after another (instead of row by row)
+			</label>
+			
+			<label>
+				<input type="checkbox" id="mirror-right-half" />
+				Mirrored keys on the right half
+			</label>
+			
+			<label>
+				<input type="checkbox" id="omit-m1" />
+				Omit <code>-1</code> keys
+			</label>
+			
 			Omit keys that are KC_NO on:<br/>
+			
 			<select id="omit-non-keys">
 				<option value="0" selected>(don't omit)</option>
 				<option value="1">First layer</option>
 				<option value="2">First two layers</option>
 				<option value="-1">All layers</option>
 			</select>
+			
 			Key move definitions (old row, old col => new row, new col):<br/>
 			<textarea id="move-defs" rows="4" placeholder="1,2 => 0,3"></textarea>
+			
 			OR enter key ranges to pick from the source file:<br/>
 			<textarea id="key-ranges" rows="4" placeholder="0,0-3&#10;2,0-3&#10;1,0-3&#10;3,0-3"></textarea>
+			
+			<label>
+				<input type="checkbox" class="transient" id="show-key-pos"/>
+				Show key row,col inside the "Shift" state
+			</label>
 		</details>
 		
 		<details>

@@ -39,6 +39,7 @@ class Main {
 	
 	static var cbHalfAfterHalf:InputElement = find("half-after-half");
 	static var cbMirrorRightHalf:InputElement = find("mirror-right-half");
+	static var cbDebugKeyPos:InputElement = find("show-key-pos");
 	static var ddOmitNonKeys:SelectElement = find("omit-non-keys");
 	static var ddMarkNonKeysAs:SelectElement = find("mark-non-keys");
 	static var cbOmitM1:InputElement = find("omit-m1");
@@ -82,6 +83,7 @@ class Main {
 		opt.omitM1 = cbOmitM1.checked;
 		opt.parseMoveDefs(fdMoveDefs.value);
 		opt.parseRangeDefs(fdKeyRanges.value);
+		opt.showKeyPos = cbDebugKeyPos.checked;
 		
 		opt.parseLayerNames(fdLayerNames.value);
 		opt.parseIncludeLayers(fdIncludeLayers.value);

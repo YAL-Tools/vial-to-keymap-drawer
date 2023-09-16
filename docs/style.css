@@ -12,6 +12,9 @@ main {
 main h1 {
 	margin: 0;
 }
+main label:not(.inline) {
+	display: block;
+}
 main input[type="text"],
 main input[type="file"],
 main select:not(.inline),

@@ -27,6 +27,7 @@ class VilToDrawerOpt {
 	public var moveDefs:Array<VilToDrawerMoveDef> = [];
 	public var rangeDefs:Array<VilToDrawerRangeDef> = [];
 	public var keyOverrides:Array<VilToDrawerKeyOverride> = [];
+	public var showKeyPos = false;
 	public function new() {}
 	
 	public dynamic function log(level:String, v:Any) {

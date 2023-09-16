@@ -125,6 +125,12 @@ class SysMain {
 			"This overrides all of the above tweaks and can be used if the exported layout",
 			"is wildly different from the QMK layout.",
 		]),
+		new CommandLineOption("show-key-row-col", [], function(path) {
+			config.parseRangeDefs(getText(path));
+		}, [
+			"Shows row,column for each key inside the 'Shift' state.",
+			"Can make it easier to figure out key ranges.",
+		]),
 		new CommandLineOption("omit-m1", [], function() {
 			config.omitM1 = true;
 		}, [

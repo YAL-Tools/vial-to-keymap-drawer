@@ -129,6 +129,7 @@ Main.convert = function() {
 	opt.omitM1 = Main.cbOmitM1.checked;
 	opt.parseMoveDefs(Main.fdMoveDefs.value);
 	opt.parseRangeDefs(Main.fdKeyRanges.value);
+	opt.showKeyPos = Main.cbDebugKeyPos.checked;
 	opt.parseLayerNames(Main.fdLayerNames.value);
 	opt.parseIncludeLayers(Main.fdIncludeLayers.value);
 	opt.parseKeyOverrides(Main.fdKeyOverrides.value);
@@ -199,7 +200,7 @@ Main.loadSample = function(name) {
 	if(name == null) {
 		name = "yal-sofle";
 	}
-	var sfx = "?t=" + "2023-09-16--17-07-37";
+	var sfx = "?t=" + "2023-09-17--02-03-52";
 	var rs = new haxe_http_HttpJs("examples/" + name + ".json" + sfx);
 	rs.onData = function(s) {
 		Main.applySettings(JSON.parse(s));
@@ -541,6 +542,19 @@ Type.typeof = function(v) {
 };
 var VilToDrawer = function() { };
 VilToDrawer.__name__ = true;
+VilToDrawer.keysToInfos = function(keys,layer,row,ind) {
+	var infos = [];
+	var _g_current = 0;
+	var _g_array = keys;
+	while(_g_current < _g_array.length) {
+		var _g_value = _g_array[_g_current];
+		var _g_key = _g_current++;
+		var i = _g_key;
+		var key = _g_value;
+		infos.push({ layer : layer, row : row, col : i, ind : ind + i, key : key});
+	}
+	return infos;
+};
 VilToDrawer.procViaLayers = function(opt) {
 	var vLayers = [];
 	var _g_current = 0;
@@ -550,7 +564,7 @@ VilToDrawer.procViaLayers = function(opt) {
 		var _g_key = _g_current++;
 		var l = _g_key;
 		var layer = _g_value;
-		var keys = [layer.slice()];
+		var keys = [VilToDrawer.keysToInfos(layer,l,0,0)];
 		var checkPos = (function(keys) {
 			return function(row,col,rule) {
 				if(row != 0) {
@@ -608,15 +622,18 @@ VilToDrawer.procVialLayers = function(opt) {
 		var _g_key = _g_current++;
 		var i = _g_key;
 		var layer = _g_value;
-		var rows = [layer.slice()];
+		var rows = [[]];
+		var infId = 0;
 		var _g_current1 = 0;
-		var _g_array1 = rows[0];
+		var _g_array1 = layer;
 		while(_g_current1 < _g_array1.length) {
 			var _g_value1 = _g_array1[_g_current1];
 			var _g_key1 = _g_current1++;
-			var i1 = _g_key1;
+			var k = _g_key1;
 			var row = _g_value1;
-			rows[0][i1] = row.slice();
+			var infos = VilToDrawer.keysToInfos(row,i,k,infId);
+			rows[0].push(infos);
+			infId += infos.length;
 		}
 		var checkPos = (function(rows) {
 			return function(row,col,rule) {
@@ -640,7 +657,7 @@ VilToDrawer.procVialLayers = function(opt) {
 				if(checkPos(ko.row,ko.col,ko.rule)) {
 					continue;
 				}
-				rows[0][ko.row][ko.col] = ko.key;
+				rows[0][ko.row][ko.col].key = ko.key;
 			}
 		}
 		var keys = [];
@@ -724,7 +741,7 @@ VilToDrawer.postProcLayers = function(vLayers,opt) {
 	if(omitNonKeys != 0) {
 		var k = vLayers[0].length;
 		while(--k >= 0) {
-			if(vLayers[0][k] != "KC_NO") {
+			if(vLayers[0][k].key != "KC_NO") {
 				continue;
 			}
 			var isNon = true;
@@ -735,7 +752,7 @@ VilToDrawer.postProcLayers = function(vLayers,opt) {
 				if(omitNonKeys > 0 && l2 >= omitNonKeys) {
 					continue;
 				}
-				if(vLayers[l2][k] == "KC_NO") {
+				if(vLayers[l2][k].key == "KC_NO") {
 					continue;
 				}
 				isNon = false;
@@ -754,7 +771,7 @@ VilToDrawer.postProcLayers = function(vLayers,opt) {
 	if(opt.omitM1) {
 		var k = vLayers[0].length;
 		while(--k >= 0) {
-			if(!vial_VialKey.isM1(vLayers[0][k])) {
+			if(!vial_VialKey.isM1(vLayers[0][k].key)) {
 				continue;
 			}
 			var isM1 = true;
@@ -762,7 +779,7 @@ VilToDrawer.postProcLayers = function(vLayers,opt) {
 			var _g1 = vLayers.length;
 			while(_g < _g1) {
 				var l = _g++;
-				if(vial_VialKey.isM1(vLayers[l][k])) {
+				if(vial_VialKey.isM1(vLayers[l][k].key)) {
 					continue;
 				}
 				isM1 = false;
@@ -806,7 +823,7 @@ VilToDrawer.run = function(opt) {
 			var _g_key1 = _g_current1++;
 			var k = _g_key1;
 			var kc = _g_value1;
-			var dk = vial_VialKey.toDrawerKey(kc,opt);
+			var dk = vial_VialKey.toDrawerKey(kc.key,opt);
 			var mo = "MO(" + li + ")";
 			var lts = "LT" + li + "(";
 			var held = false;
@@ -817,7 +834,7 @@ VilToDrawer.run = function(opt) {
 				if(vkeys == vkeys2) {
 					continue;
 				}
-				var kc2 = vkeys2[k];
+				var kc2 = vkeys2[k].key;
 				if(kc2 == null) {
 					continue;
 				}
@@ -827,17 +844,17 @@ VilToDrawer.run = function(opt) {
 				}
 			}
 			if(held) {
-				var dkx;
-				if(typeof(dk) == "string") {
-					dkx = { t : dk};
-				} else {
-					dkx = dk;
-				}
+				var dkx = drawer_DrawerKey.toExt(dk);
 				dkx.type = "held";
 				if(dkx.t == vial_VialKeyNames.map.h["KC_TRNS"]) {
 					dkx.t = "";
 				}
 				dk = dkx;
+			}
+			if(opt.showKeyPos) {
+				var dkx1 = drawer_DrawerKey.toExt(dk);
+				dkx1.s = kc.row + "," + kc.col;
+				dk = dkx1;
 			}
 			dkeys.push(dk);
 		}
@@ -935,7 +952,19 @@ VilToDrawer.run = function(opt) {
 				while(_g4 < inKeys.length) {
 					var key = inKeys[_g4];
 					++_g4;
-					var kp = vKeys.indexOf(key);
+					var kp = -1;
+					var _g_current1 = 0;
+					var _g_array1 = vKeys;
+					while(_g_current1 < _g_array1.length) {
+						var _g_value1 = _g_array1[_g_current1];
+						var _g_key1 = _g_current1++;
+						var kid = _g_key1;
+						var ki = _g_value1;
+						if(ki.key == key) {
+							kp = kid;
+							break;
+						}
+					}
 					if(kp >= 0) {
 						keyPos.push(kp);
 					} else {
@@ -963,6 +992,7 @@ VilToDrawer.runTxt = function(opt) {
 	return JSON.stringify(dkm,null,"  ");
 };
 var VilToDrawerOpt = function() {
+	this.showKeyPos = false;
 	this.keyOverrides = [];
 	this.rangeDefs = [];
 	this.moveDefs = [];
@@ -992,8 +1022,9 @@ VilToDrawerOpt.prototype = {
 	,moveDefs: null
 	,rangeDefs: null
 	,keyOverrides: null
+	,showKeyPos: null
 	,log: function(level,v) {
-		haxe_Log.trace("[" + level + "]",{ fileName : "src/VilToDrawerOpt.hx", lineNumber : 33, className : "VilToDrawerOpt", methodName : "log", customParams : [v == null ? "null" : Std.string(v)]});
+		haxe_Log.trace("[" + level + "]",{ fileName : "src/VilToDrawerOpt.hx", lineNumber : 34, className : "VilToDrawerOpt", methodName : "log", customParams : [v == null ? "null" : Std.string(v)]});
 	}
 	,info: function(v) {
 		this.log("info",v);
@@ -2487,7 +2518,7 @@ Array.__name__ = true;
 Date.prototype.__class__ = Date;
 Date.__name__ = "Date";
 js_Boot.__toStr = ({ }).toString;
-Main.buildDate = "2023-09-16--17-07-37";
+Main.buildDate = "2023-09-17--02-03-52";
 Main.fdVil = window.document.getElementById("vil");
 Main.fdOut = window.document.getElementById("out");
 Main.fdLog = window.document.getElementById("log");
@@ -2495,6 +2526,7 @@ Main.fmVil = window.document.getElementById("vil-form");
 Main.ffVil = window.document.getElementById("vil-picker");
 Main.cbHalfAfterHalf = window.document.getElementById("half-after-half");
 Main.cbMirrorRightHalf = window.document.getElementById("mirror-right-half");
+Main.cbDebugKeyPos = window.document.getElementById("show-key-pos");
 Main.ddOmitNonKeys = window.document.getElementById("omit-non-keys");
 Main.ddMarkNonKeysAs = window.document.getElementById("mark-non-keys");
 Main.cbOmitM1 = window.document.getElementById("omit-m1");

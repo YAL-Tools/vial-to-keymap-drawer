@@ -18,10 +18,23 @@ class VilToDrawer {
 	#else
 	public static inline var needsHxOrder:Bool = true;
 	#end
+	static function keysToInfos(keys:Array<VialKey>, layer:Int, row:Int, ind:Int) {
+		var infos = [];
+		for (i => key in keys) {
+			infos.push({
+				layer: layer,
+				row: row,
+				col: i,
+				ind: ind + i,
+				key: key,
+			});
+		}
+		return infos;
+	}
 	static function procViaLayers(opt:VilToDrawerOpt) {
-		var vLayers:Array<Array<VialKey>> = [];
+		var vLayers:Array<Array<VialKeyInfo>> = [];
 		for (l => layer in opt.root.layers) {
-			var keys = layer.copy();
+			var keys:Array<VialKeyInfo> = keysToInfos(layer, l, 0, 0);
 			function checkPos(row:Int, col:Int, rule:String) {
 				if (row != 0) {
 					opt.warn('Row should be 0 is VIA layouts (found $row in "$rule")');
@@ -51,10 +64,15 @@ class VilToDrawer {
 		return vLayers;
 	}
 	static function procVialLayers(opt:VilToDrawerOpt) {
-		var vLayers:Array<Array<VialKey>> = [];
+		var vLayers:Array<Array<VialKeyInfo>> = [];
 		for (i => layer in opt.root.layout) { // Vial
-			var rows = layer.copy();
-			for (i => row in rows) rows[i] = row.copy();
+			var rows = [];
+			var infId = 0;
+			for (k => row in layer) {
+				var infos = keysToInfos(row, i, k, infId);
+				rows.push(infos);
+				infId += infos.length;
+			}
 			function checkPos(row:Int, col:Int, rule:String) {
 				if (row < 0 || row >= rows.length) {
 					opt.error('Row $row out of bounds for "$rule"');
@@ -69,7 +87,7 @@ class VilToDrawer {
 			//
 			for (ko in opt.keyOverrides) if (ko.layer == i) {
 				if (checkPos(ko.row, ko.col, ko.rule)) continue;
-				rows[ko.row][ko.col] = ko.key;
+				rows[ko.row][ko.col].key = ko.key;
 			}
 			//
 			var keys = [];
@@ -108,16 +126,16 @@ class VilToDrawer {
 		}
 		return vLayers;
 	}
-	static function postProcLayers(vLayers:Array<Array<VialKey>>, opt:VilToDrawerOpt) {
+	static function postProcLayers(vLayers:Array<Array<VialKeyInfo>>, opt:VilToDrawerOpt) {
 		var omitNonKeys = opt.omitNonKeys;
 		if (omitNonKeys != 0) {
 			var k = vLayers[0].length;
 			while (--k >= 0) {
-				if (vLayers[0][k] != "KC_NO") continue;
+				if (vLayers[0][k].key != "KC_NO") continue;
 				var isNon = true;
 				for (l2 in 1 ... vLayers.length) {
 					if (omitNonKeys > 0 && l2 >= omitNonKeys) continue;
-					if (vLayers[l2][k] == "KC_NO") continue;
+					if (vLayers[l2][k].key == "KC_NO") continue;
 					isNon = false;
 					break;
 				}
@@ -127,10 +145,10 @@ class VilToDrawer {
 		if (opt.omitM1) {
 			var k = vLayers[0].length;
 			while (--k >= 0) {
-				if (!vLayers[0][k].isM1()) continue;
+				if (!vLayers[0][k].key.isM1()) continue;
 				var isM1 = true;
 				for (l in 0 ... vLayers.length) {
-					if (vLayers[l][k].isM1()) continue;
+					if (vLayers[l][k].key.isM1()) continue;
 					isM1 = false;
 					break;
 				}
@@ -150,7 +168,7 @@ class VilToDrawer {
 		var isVial = !opt.isVIA;
 		
 		// layer -> keys[]
-		var vLayers:Array<Array<VialKey>> = isVial ? procVialLayers(opt) : procViaLayers(opt);
+		var vLayers:Array<Array<VialKeyInfo>> = isVial ? procVialLayers(opt) : procViaLayers(opt);
 		postProcLayers(vLayers, opt);
 		
 		//
@@ -161,14 +179,14 @@ class VilToDrawer {
 			if (opt.includeLayers.length > 0 && !opt.includeLayers.contains(li)) continue;
 			var dkeys = [];
 			for (k => kc in vkeys) {
-				var dk = kc.toDrawerKey(opt);
+				var dk:DrawerKey = kc.key.toDrawerKey(opt);
 				// is this a held key?
 				var mo = "MO(" + li + ")";
 				var lts = "LT" + li + "(";
 				var held = false;
 				for (vkeys2 in vLayers) {
 					if (vkeys == vkeys2) continue;
-					var kc2 = vkeys2[k];
+					var kc2 = vkeys2[k].key;
 					if (kc2 == null) continue;
 					if (kc2 == mo || (kc2:String).startsWith(lts)) {
 						held = true;
@@ -176,12 +194,14 @@ class VilToDrawer {
 					}
 				}
 				if (held) {
-					var dkx:DrawerKeyExt;
-					if (dk is String) {
-						dkx = { t: dk };
-					} else dkx = dk;
+					var dkx = dk.toExt();
 					dkx.type = "held";
 					if (dkx.t == VialKeyNames.map["KC_TRNS"]) dkx.t = "";
+					dk = dkx;
+				}
+				if (opt.showKeyPos) {
+					var dkx = dk.toExt();
+					dkx.s = kc.row + "," + kc.col;
 					dk = dkx;
 				}
 				dkeys.push(dk);
@@ -240,7 +260,13 @@ class VilToDrawer {
 			for (li => vKeys in vLayers) {
 				var keyPos = [];
 				for (key in inKeys) {
-					var kp = vKeys.indexOf(key);
+					var kp = -1;
+					for (kid => ki in vKeys) {
+						if (ki.key == key) {
+							kp = kid;
+							break;
+						}
+					}
 					if (kp >= 0) keyPos.push(kp); else break;
 				}
 				if (keyPos.length < inKeys.length) continue;
@@ -275,3 +301,10 @@ class VilToDrawer {
 		return Json.stringify(dkm, null, "  ");
 	}
 }
+typedef VialKeyInfo = {
+	layer:Int,
+	row:Int,
+	col:Int,
+	ind:Int,
+	key:VialKey
+};
