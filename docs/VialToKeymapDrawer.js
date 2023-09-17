@@ -223,7 +223,7 @@ Main.loadSample = function(name) {
 	if(name == null) {
 		name = "yal-sofle";
 	}
-	var sfx = "?t=" + "2023-09-17--18-38-27";
+	var sfx = "?t=" + "2023-09-17--19-16-48";
 	var rs = new haxe_http_HttpJs("examples/" + name + ".json" + sfx);
 	rs.onData = function(s) {
 		Main.applySettings(JSON.parse(s));
@@ -1071,7 +1071,7 @@ VilToDrawer.runTxt = function(opt) {
 			case "combos":case "layers":case "layout":
 				continue;
 			}
-			yb_b += Std.string("fd: " + JSON.stringify(Reflect.field(dkm,fd)) + "\n");
+			yb_b += Std.string(fd + ": " + JSON.stringify(Reflect.field(dkm,fd)) + "\n");
 		}
 		return yb_b;
 	} else {
@@ -2781,7 +2781,7 @@ Array.__name__ = true;
 Date.prototype.__class__ = Date;
 Date.__name__ = "Date";
 js_Boot.__toStr = ({ }).toString;
-Main.buildDate = "2023-09-17--18-38-27";
+Main.buildDate = "2023-09-17--19-16-48";
 Main.fdVil = window.document.getElementById("vil");
 Main.fdOut = window.document.getElementById("out");
 Main.fdLog = window.document.getElementById("log");

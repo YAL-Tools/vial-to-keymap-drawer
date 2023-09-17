@@ -324,7 +324,7 @@ class VilToDrawer {
 				switch (fd) {
 					case "layout", "layers", "combos": continue;
 				}
-				yb.add('fd: ' + Json.stringify(Reflect.field(dkm, fd)) + '\n');
+				yb.add(fd + ': ' + Json.stringify(Reflect.field(dkm, fd)) + '\n');
 			}
 			return yb.toString();
 		} else {
