@@ -15,6 +15,7 @@ import js.html.InputElement;
 import js.html.SelectElement;
 import js.html.TextAreaElement;
 import drawer.DrawerKeymap;
+import js.html.Window;
 import tools.ERegTools;
 import tools.JsonParserWithComments;
 import vial.VialKeymap;
@@ -27,7 +28,7 @@ using StringTools;
  */
 class Main {
 	public static inline var buildDate:String = tools.BuildDate.asString();
-	static inline function find<T:Element>(id:String, ?c:Class<T>):T {
+	public static inline function find<T:Element>(id:String, ?c:Class<T>):T {
 		return cast Browser.document.getElementById(id);
 	}
 	static var fdVil:TextAreaElement = find("vil");
@@ -46,7 +47,9 @@ class Main {
 	static var fdKeyboard:InputElement = find("keyboard");
 	static var fdLayout:InputElement = find("layout");
 	static var fdMoveDefs:TextAreaElement = find("move-defs");
-	static var fdKeyRanges:TextAreaElement = find("key-ranges");
+	public static var fdKeyRanges:TextAreaElement = find("key-ranges");
+	
+	static var wndKeyRangeEditor:Window = null;
 	
 	static var fdLayerNames:TextAreaElement = find("layer-names");
 	static var fdIncludeLayers:InputElement = find("include-layers");
@@ -63,10 +66,14 @@ class Main {
 	static var fmLoad:FormElement = find("load-form");
 	static var ffLoad:InputElement = find("load-picker");
 	
+	
 	static var fields:Array<PageField> = [];
 	
-	static function convert() {
+	public static var latestOpt:VilToDrawerOpt = null;
+	public static function convert_impl(forKeyRange:Bool = false) {
 		var opt = new VilToDrawerOpt();
+		latestOpt = opt;
+		
 		fdLog.value = "";
 		opt.log = (level:String, v:Any) -> {
 			fdLog.value += (fdLog.value.length > 0 ? "\n" : "")
@@ -77,27 +84,42 @@ class Main {
 		opt.qmkLayout = fdLayout.value.trim();
 		opt.parseVil(fdVil.value);
 		
-		opt.halfAfterHalf = cbHalfAfterHalf.checked;
-		opt.mirrorRightHalf = cbMirrorRightHalf.checked;
+		if (!forKeyRange) {
+			opt.halfAfterHalf = cbHalfAfterHalf.checked;
+			opt.mirrorRightHalf = cbMirrorRightHalf.checked;
+			opt.parseMoveDefs(fdMoveDefs.value);
+			opt.parseRangeDefs(fdKeyRanges.value);
+			opt.showKeyPos = cbDebugKeyPos.checked;
+		} else {
+			opt.combos = false;
+			opt.outKeys = [];
+		}
 		opt.omitNonKeys = Std.parseInt(ddOmitNonKeys.value);
 		opt.omitM1 = cbOmitM1.checked;
-		opt.parseMoveDefs(fdMoveDefs.value);
-		opt.parseRangeDefs(fdKeyRanges.value);
-		opt.showKeyPos = cbDebugKeyPos.checked;
 		
 		opt.parseLayerNames(fdLayerNames.value);
-		opt.parseIncludeLayers(fdIncludeLayers.value);
+		if (!forKeyRange) {
+			opt.parseIncludeLayers(fdIncludeLayers.value);
+		} else opt.includeLayers.push(0);
 		opt.parseKeyOverrides(fdKeyOverrides.value);
 		opt.markNonKeysAs = ddMarkNonKeysAs.value;
 		if (opt.markNonKeysAs == "") opt.markNonKeysAs = null;
 		
 		try {
-			fdOut.value = VilToDrawer.runTxt(opt);
+			var result = VilToDrawer.runTxt(opt);
 			opt.info("Done!");
+			return result;
 		} catch (x:Dynamic) {
 			Browser.console.error("Conversion error:", x);
 			opt.error(x);
+			return null;
 		}
+	}
+	static function convert() {
+		var text = convert_impl();
+		if (text != null) {
+			fdOut.value = text;
+		} else fdOut.value = "error!";
 	}
 	static function clear() {
 		for (fd in fields) fd.reset();
@@ -257,7 +279,8 @@ class Main {
 		kbjs.src = "qmk_keyboards.js";
 		Browser.document.body.appendChild(kbjs);
 		
-		//if (local) loadSample("yal-cepstrum");
+		if (local) loadSample("cepstrum");
+		web.KeyRangeCreator.init();
 		Browser.console.info("Hello!");
 	}
 	

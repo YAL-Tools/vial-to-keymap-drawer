@@ -48,3 +48,40 @@ details {
 details > summary {
 	padding-left: 0.5em;
 }
+
+#key-range-editor {
+	position: fixed;
+	inset: 0.5em;
+	background: white;
+	border: 1px solid #444;
+	box-shadow: 0 0 1em rgba(0, 0, 0, 0.1);
+	display: flex;
+}
+#key-range-editor .sidebar {
+	width: 8em;
+	background: #f0f0f0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden auto;
+	padding: 0.3em;
+}
+#key-range-editor .sidebar input {
+	margin-bottom: 0.3em;
+}
+#key-range-editor .sidebar #key-range-close {
+	margin-top: 0.3em;
+	margin-bottom: 0;
+}
+#key-range-editor .sidebar textarea {
+	flex-grow: 1;
+}
+#key-range-editor .svg-ctr {
+	flex-grow: 1;
+	overflow-y: auto;
+}
+#key-range-editor .howto {
+	padding: 0.5em;
+}
+#key-range-editor .svg-ctr svg {
+	max-width: 100%;
+}

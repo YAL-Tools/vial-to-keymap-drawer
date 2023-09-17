@@ -114,8 +114,12 @@ Main.__name__ = true;
 Main.find = function(id,c) {
 	return window.document.getElementById(id);
 };
-Main.convert = function() {
+Main.convert_impl = function(forKeyRange) {
+	if(forKeyRange == null) {
+		forKeyRange = false;
+	}
 	var opt = new VilToDrawerOpt();
+	Main.latestOpt = opt;
 	Main.fdLog.value = "";
 	opt.log = function(level,v) {
 		Main.fdLog.value += (Main.fdLog.value.length > 0 ? "\n" : "") + ("[" + level + "] ") + (v == null ? "null" : Std.string(v));
@@ -123,27 +127,46 @@ Main.convert = function() {
 	opt.qmkKeyboard = StringTools.trim(Main.fdKeyboard.value);
 	opt.qmkLayout = StringTools.trim(Main.fdLayout.value);
 	opt.parseVil(Main.fdVil.value);
-	opt.halfAfterHalf = Main.cbHalfAfterHalf.checked;
-	opt.mirrorRightHalf = Main.cbMirrorRightHalf.checked;
+	if(!forKeyRange) {
+		opt.halfAfterHalf = Main.cbHalfAfterHalf.checked;
+		opt.mirrorRightHalf = Main.cbMirrorRightHalf.checked;
+		opt.parseMoveDefs(Main.fdMoveDefs.value);
+		opt.parseRangeDefs(Main.fdKeyRanges.value);
+		opt.showKeyPos = Main.cbDebugKeyPos.checked;
+	} else {
+		opt.combos = false;
+		opt.outKeys = [];
+	}
 	opt.omitNonKeys = Std.parseInt(Main.ddOmitNonKeys.value);
 	opt.omitM1 = Main.cbOmitM1.checked;
-	opt.parseMoveDefs(Main.fdMoveDefs.value);
-	opt.parseRangeDefs(Main.fdKeyRanges.value);
-	opt.showKeyPos = Main.cbDebugKeyPos.checked;
 	opt.parseLayerNames(Main.fdLayerNames.value);
-	opt.parseIncludeLayers(Main.fdIncludeLayers.value);
+	if(!forKeyRange) {
+		opt.parseIncludeLayers(Main.fdIncludeLayers.value);
+	} else {
+		opt.includeLayers.push(0);
+	}
 	opt.parseKeyOverrides(Main.fdKeyOverrides.value);
 	opt.markNonKeysAs = Main.ddMarkNonKeysAs.value;
 	if(opt.markNonKeysAs == "") {
 		opt.markNonKeysAs = null;
 	}
 	try {
-		Main.fdOut.value = VilToDrawer.runTxt(opt);
+		var result = VilToDrawer.runTxt(opt);
 		opt.info("Done!");
+		return result;
 	} catch( _g ) {
 		var x = haxe_Exception.caught(_g).unwrap();
 		$global.console.error("Conversion error:",x);
 		opt.error(x);
+		return null;
+	}
+};
+Main.convert = function() {
+	var text = Main.convert_impl();
+	if(text != null) {
+		Main.fdOut.value = text;
+	} else {
+		Main.fdOut.value = "error!";
 	}
 };
 Main.clear = function() {
@@ -200,7 +223,7 @@ Main.loadSample = function(name) {
 	if(name == null) {
 		name = "yal-sofle";
 	}
-	var sfx = "?t=" + "2023-09-17--02-03-52";
+	var sfx = "?t=" + "2023-09-17--18-38-27";
 	var rs = new haxe_http_HttpJs("examples/" + name + ".json" + sfx);
 	rs.onData = function(s) {
 		Main.applySettings(JSON.parse(s));
@@ -380,6 +403,10 @@ Main.main = function() {
 	kbjs.async = true;
 	kbjs.src = "qmk_keyboards.js";
 	window.document.body.appendChild(kbjs);
+	if(local) {
+		Main.loadSample("cepstrum");
+	}
+	web_KeyRangeCreator.init();
 	$global.console.info("Hello!");
 };
 Math.__name__ = true;
@@ -797,11 +824,24 @@ VilToDrawer.postProcLayers = function(vLayers,opt) {
 		}
 	}
 };
-VilToDrawer.run = function(opt) {
+VilToDrawer.runTxt = function(opt) {
 	var vkm = opt.root;
 	var isVial = !opt.isVIA;
 	var vLayers = isVial ? VilToDrawer.procVialLayers(opt) : VilToDrawer.procViaLayers(opt);
 	VilToDrawer.postProcLayers(vLayers,opt);
+	if(opt.outKeys != null) {
+		var _g = 0;
+		while(_g < vLayers.length) {
+			var vLayer = vLayers[_g];
+			++_g;
+			var _g1 = 0;
+			while(_g1 < vLayer.length) {
+				var kp = vLayer[_g1];
+				++_g1;
+				opt.outKeys.push(kp);
+			}
+		}
+	}
 	var dkLayers = { };
 	var dkLayerList = [];
 	var layerNames = [];
@@ -917,7 +957,7 @@ VilToDrawer.run = function(opt) {
 		}
 	}
 	var dCombos = [];
-	if(vkm.combo != null) {
+	if(vkm.combo != null && opt.combos) {
 		var _g = 0;
 		var _g1 = vkm.combo;
 		while(_g < _g1.length) {
@@ -985,13 +1025,63 @@ VilToDrawer.run = function(opt) {
 	if(opt.qmkLayout != null && opt.qmkLayout != "") {
 		dkm.layout.qmk_layout = opt.qmkLayout;
 	}
-	return dkm;
-};
-VilToDrawer.runTxt = function(opt) {
-	var dkm = VilToDrawer.run(opt);
-	return JSON.stringify(dkm,null,"  ");
+	if(opt.yamlLike) {
+		var rxId = new EReg("^[_a-zA-Z][_a-zA-Z0-9]*$","");
+		var idOrJson = function(val) {
+			if(typeof(val) == "string" && rxId.match(val)) {
+				return val;
+			}
+			return JSON.stringify(val);
+		};
+		var yb_b = "";
+		yb_b += Std.string("layout: " + JSON.stringify(dkm.layout) + "\n");
+		yb_b += "layers:\n";
+		var _g = 0;
+		while(_g < layerNames.length) {
+			var ln = layerNames[_g];
+			++_g;
+			var tmp = idOrJson(ln);
+			yb_b += Std.string("  " + (tmp == null ? "null" : Std.string(tmp)) + ":\n");
+			var _g1 = 0;
+			var _g2 = dkm.layers[ln];
+			while(_g1 < _g2.length) {
+				var key = _g2[_g1];
+				++_g1;
+				var tmp1 = idOrJson(key);
+				yb_b += Std.string("    - " + (tmp1 == null ? "null" : Std.string(tmp1)) + "\n");
+			}
+		}
+		if(dkm.combos != null && dkm.combos.length > 0) {
+			yb_b += "combos:\n";
+			var _g = 0;
+			var _g1 = dkm.combos;
+			while(_g < _g1.length) {
+				var combo = _g1[_g];
+				++_g;
+				var tmp = idOrJson(combo);
+				yb_b += Std.string("  - " + (tmp == null ? "null" : Std.string(tmp)) + "\n");
+			}
+		}
+		var _g = 0;
+		var _g1 = Reflect.fields(dkm);
+		while(_g < _g1.length) {
+			var fd = _g1[_g];
+			++_g;
+			switch(fd) {
+			case "combos":case "layers":case "layout":
+				continue;
+			}
+			yb_b += Std.string("fd: " + JSON.stringify(Reflect.field(dkm,fd)) + "\n");
+		}
+		return yb_b;
+	} else {
+		return JSON.stringify(dkm,null,"  ");
+	}
 };
 var VilToDrawerOpt = function() {
+	this.outKeys = null;
+	this.combos = true;
+	this.yamlLike = true;
 	this.showKeyPos = false;
 	this.keyOverrides = [];
 	this.rangeDefs = [];
@@ -1023,8 +1113,11 @@ VilToDrawerOpt.prototype = {
 	,rangeDefs: null
 	,keyOverrides: null
 	,showKeyPos: null
+	,yamlLike: null
+	,combos: null
+	,outKeys: null
 	,log: function(level,v) {
-		haxe_Log.trace("[" + level + "]",{ fileName : "src/VilToDrawerOpt.hx", lineNumber : 34, className : "VilToDrawerOpt", methodName : "log", customParams : [v == null ? "null" : Std.string(v)]});
+		haxe_Log.trace("[" + level + "]",{ fileName : "src/VilToDrawerOpt.hx", lineNumber : 40, className : "VilToDrawerOpt", methodName : "log", customParams : [v == null ? "null" : Std.string(v)]});
 	}
 	,info: function(v) {
 		this.log("info",v);
@@ -2505,6 +2598,176 @@ vial_VialKeymapTapDance.set_tapTerm = function(this1,t) {
 };
 var vial_VialKeysWithShiftState = function() { };
 vial_VialKeysWithShiftState.__name__ = true;
+var web_KeyRangeCreator = function() { };
+web_KeyRangeCreator.__name__ = true;
+web_KeyRangeCreator.btCopyYAML_show = function(next) {
+	var orig = web_KeyRangeCreator.btCopyYAML.value;
+	if(orig != next) {
+		web_KeyRangeCreator.btCopyYAML.value = "Copied!";
+		window.setTimeout(function() {
+			web_KeyRangeCreator.btCopyYAML.value = web_KeyRangeCreator.btCopyYAML_text;
+		},1000);
+	}
+};
+web_KeyRangeCreator.update = function() {
+	var newKeys = web_KeyRangeCreator.svgNew.querySelectorAll("g.key");
+	var oldKeys = web_KeyRangeCreator.svgOld.querySelectorAll("g.key");
+	var _g = 0;
+	var _g1 = newKeys.length;
+	while(_g < _g1) {
+		var i = _g++;
+		var ki = web_KeyRangeCreator.keyOrder[i];
+		var okey = ki != null ? oldKeys[ki] : null;
+		var nkey = newKeys[i];
+		if(okey != null) {
+			var rect = nkey.querySelector("rect").outerHTML;
+			nkey.innerHTML = okey.innerHTML;
+			nkey.querySelector("rect").outerHTML = rect;
+		} else {
+			var todo = [];
+			var _g2 = 0;
+			var _g3 = nkey.children;
+			while(_g2 < _g3.length) {
+				var c = _g3[_g2];
+				++_g2;
+				if(c.tagName.toLowerCase() != "rect") {
+					todo.push(c);
+				}
+			}
+			var _g4 = 0;
+			while(_g4 < todo.length) {
+				var c1 = todo[_g4];
+				++_g4;
+				nkey.removeChild(c1);
+			}
+		}
+	}
+	var ranges = [];
+	var rangeStart = null;
+	var rangeEnd = null;
+	var flushRange = function() {
+		var txt = rangeStart.row + "," + rangeStart.col;
+		if(rangeEnd.col != rangeStart.col) {
+			txt += "-" + rangeEnd.col;
+		}
+		ranges.push(txt);
+	};
+	var _g_current = 0;
+	var _g_array = web_KeyRangeCreator.keyOrder;
+	while(_g_current < _g_array.length) {
+		var _g_value = _g_array[_g_current];
+		var _g_key = _g_current++;
+		var i = _g_key;
+		var ki = _g_value;
+		var kp = web_KeyRangeCreator.keyInfo[ki];
+		if(rangeStart == null) {
+			rangeEnd = kp;
+			rangeStart = rangeEnd;
+		} else if(kp.row != rangeEnd.row || kp.col != rangeEnd.col + 1) {
+			flushRange();
+			rangeEnd = kp;
+			rangeStart = rangeEnd;
+		} else {
+			rangeEnd = kp;
+		}
+	}
+	if(rangeStart != null) {
+		flushRange();
+	}
+	Main.fdKeyRanges.value = web_KeyRangeCreator.fdOut.value = ranges.join("\n");
+};
+web_KeyRangeCreator.svgReady = function(svg) {
+	web_KeyRangeCreator.svgOld.innerHTML = svg;
+	web_KeyRangeCreator.svgOld.onmousedown = function(e) {
+		web_KeyRangeCreator.svgMouseDown = true;
+		var fn = function(e) {
+			window.removeEventListener("mouseup",fn);
+			web_KeyRangeCreator.svgMouseDown = false;
+			$global.console.log("up");
+		};
+		window.addEventListener("mouseup",fn);
+		e.preventDefault();
+		return false;
+	};
+	var keyCount = 0;
+	var _g = 0;
+	var _g1 = web_KeyRangeCreator.svgOld.querySelectorAll("g.key");
+	while(_g < _g1.length) {
+		var _key = _g1[_g];
+		++_g;
+		var key = [_key];
+		var ki = [keyCount++];
+		key[0].onclick = (function(ki,key) {
+			return function(_) {
+				if(HxOverrides.remove(web_KeyRangeCreator.keyOrder,ki[0])) {
+					key[0].style.opacity = "1";
+				} else {
+					key[0].style.opacity = "0.3";
+					web_KeyRangeCreator.keyOrder.push(ki[0]);
+				}
+				web_KeyRangeCreator.update();
+			};
+		})(ki,key);
+		key[0].onmousemove = (function(ki,key) {
+			return function(_) {
+				if(web_KeyRangeCreator.svgMouseDown) {
+					if(web_KeyRangeCreator.keyOrder.indexOf(ki[0]) == -1) {
+						web_KeyRangeCreator.keyOrder.push(ki[0]);
+						key[0].style.opacity = "0.3";
+						web_KeyRangeCreator.update();
+					}
+				}
+			};
+		})(ki,key);
+	}
+	web_KeyRangeCreator.svgNew.innerHTML = svg;
+	var _g = 0;
+	var _g1 = web_KeyRangeCreator.svgNew.querySelectorAll("g.key > text:not(.tap)");
+	while(_g < _g1.length) {
+		var el = _g1[_g];
+		++_g;
+		el.parentElement.removeChild(el);
+	}
+	web_KeyRangeCreator.update();
+};
+web_KeyRangeCreator.init = function() {
+	web_KeyRangeCreator.btCopyYAML.onclick = function(_) {
+		var yaml = Main.convert_impl(true);
+		if(yaml != null) {
+			web_KeyRangeCreator.keyInfo = Main.latestOpt.outKeys;
+			$global.navigator.clipboard.writeText(yaml).then(function() {
+				web_KeyRangeCreator.btCopyYAML_show("Copied!");
+			}).catch(function() {
+				web_KeyRangeCreator.btCopyYAML_show("Can't copy!");
+			});
+		} else {
+			web_KeyRangeCreator.btCopyYAML_show("Error!");
+		}
+	};
+	web_KeyRangeCreator.btOpenSVG.onclick = function() {
+		web_KeyRangeCreator.fpOpenSVG.click();
+	};
+	web_KeyRangeCreator.fpOpenSVG.onchange = function() {
+		var file = web_KeyRangeCreator.fpOpenSVG.files[0];
+		if(file == null) {
+			return;
+		}
+		var fileReader = new FileReader();
+		fileReader.onloadend = function() {
+			web_KeyRangeCreator.fmOpenSVG.reset();
+		};
+		fileReader.onload = function() {
+			web_KeyRangeCreator.svgReady(fileReader.result);
+		};
+		fileReader.readAsText(file);
+	};
+	web_KeyRangeCreator.btOpen.onclick = function() {
+		web_KeyRangeCreator.element.style.display = "";
+	};
+	web_KeyRangeCreator.btClose.onclick = function() {
+		web_KeyRangeCreator.element.style.display = "none";
+	};
+};
 function $getIterator(o) { if( o instanceof Array ) return new haxe_iterators_ArrayIterator(o); else return o.iterator(); }
 function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $global.$haxeUID++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = m.bind(o); o.hx__closures__[m.__id__] = f; } return f; }
 $global.$haxeUID |= 0;
@@ -2518,7 +2781,7 @@ Array.__name__ = true;
 Date.prototype.__class__ = Date;
 Date.__name__ = "Date";
 js_Boot.__toStr = ({ }).toString;
-Main.buildDate = "2023-09-17--02-03-52";
+Main.buildDate = "2023-09-17--18-38-27";
 Main.fdVil = window.document.getElementById("vil");
 Main.fdOut = window.document.getElementById("out");
 Main.fdLog = window.document.getElementById("log");
@@ -2549,7 +2812,7 @@ Main.fields = [];
 VilToDrawer.needsHxOrder = false;
 VilToDrawerOpt.rxLayerShortLong = new EReg("^(\\S{1,6})(?::.*|\\s+\\(.*\\))$","");
 VilToDrawerOpt.rxMoveDef = new EReg("^\\s*" + "(\\d+),\\s*" + "(\\d+)\\s*" + "(?:" + "\\[\\s*" + "(\\d+)" + "\\s*\\]\\s*" + "|" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?" + "=>\\s*" + "(\\d+),\\s*" + "(\\d+)" + "\\s*$","gm");
-VilToDrawerOpt.rxRangeDef = new EReg("^\\s*" + "(\\d+),\\s*" + "(\\d+)\\s*" + "(?:" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?" + "^","gm");
+VilToDrawerOpt.rxRangeDef = new EReg("^\\s*" + "(\\d+),\\s*" + "(\\d+)\\s*" + "(?:" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?" + "$","gm");
 VilToDrawerOpt.rxKeyOverride = new EReg("^\\s*(\\d+),\\s*(\\d+),\\s*(\\d+)\\s*=>\\s*(.+)","gm");
 tools_ERegTools.escapeRx_1 = new EReg("([.*+?^${}()|[\\]\\/\\\\])","g");
 via_ViaKeyNames.map = (function($this) {
@@ -3369,5 +3632,20 @@ vial_VialKeysWithShiftState.map = (function($this) {
 	$r = m;
 	return $r;
 }(this));
+web_KeyRangeCreator.element = window.document.getElementById("key-range-editor");
+web_KeyRangeCreator.svgCtr = web_KeyRangeCreator.element.querySelector(".svg-ctr");
+web_KeyRangeCreator.svgOld = web_KeyRangeCreator.svgCtr.querySelector(".svg-old");
+web_KeyRangeCreator.svgNew = web_KeyRangeCreator.svgCtr.querySelector(".svg-new");
+web_KeyRangeCreator.btOpen = window.document.getElementById("key-range-open");
+web_KeyRangeCreator.btClose = window.document.getElementById("key-range-close");
+web_KeyRangeCreator.btCopyYAML = window.document.getElementById("key-range-export");
+web_KeyRangeCreator.btOpenSVG = window.document.getElementById("key-range-import");
+web_KeyRangeCreator.fmOpenSVG = window.document.getElementById("key-range-svg-form");
+web_KeyRangeCreator.fpOpenSVG = window.document.getElementById("key-range-svg-picker");
+web_KeyRangeCreator.fdOut = window.document.getElementById("key-range-preview");
+web_KeyRangeCreator.btCopyYAML_text = web_KeyRangeCreator.btCopyYAML.value;
+web_KeyRangeCreator.keyInfo = [];
+web_KeyRangeCreator.keyOrder = [];
+web_KeyRangeCreator.svgMouseDown = false;
 Main.main();
 })(typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);

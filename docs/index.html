@@ -54,8 +54,9 @@
 		
 		Include <i>only</i> these layer(s):<br/>
 		<input type="text" id="include-layers" placeholder="0,1" />
-		
 		<details>
+			<input type="button" id="key-range-open" value="Open the visual key order editor" />
+			
 			<summary>Keys out of order or too many keys?</summary>
 			<label>
 				<input type="checkbox" id="half-after-half" />
@@ -87,6 +88,7 @@
 			OR enter key ranges to pick from the source file:<br/>
 			<textarea id="key-ranges" rows="4" placeholder="0,0-3&#10;2,0-3&#10;1,0-3&#10;3,0-3"></textarea>
 			
+			
 			<label>
 				<input type="checkbox" class="transient" id="show-key-pos"/>
 				Show key row,col inside the "Shift" state
@@ -115,7 +117,7 @@
 		</form>
 		<textarea id="vil" rows="4" class="transient" placeholder='{"version": 1, "uid": 128889854249716, ... }'></textarea>
 		<input type="button" value="Convert!" id="convert" />
-		<label>
+		<label class="inline">
 			<input type="checkbox" checked class="transient" id="copy-after-convert"/>
 			Copy to clipboard afterwards
 		</label>
@@ -133,6 +135,38 @@
 		<a href="https://yellowafterlife.itch.io/vial-to-keymap-drawer/purchase">give me a few dollars</a>
 		for making this.<br/>
 	</main>
+		
+	<div id="key-range-editor" style="display: none">
+		<div class="sidebar">
+			<input type="button" id="key-range-export" value="Copy YAML" />
+			<input type="button" id="key-range-import" value="Import SVG" />
+			<form id="key-range-svg-form" style="display: none">
+				<input type="file" id="key-range-svg-picker" accept=".svg" />
+			</form>
+			<textarea id="key-range-preview"></textarea>
+			<input type="button" id="key-range-close" value="Close" />
+		</div><div class="svg-ctr">
+			<div class="howto">
+				How to use:
+				<ul><li>
+					Click "Copy YAML" to copy data for a single layer.
+				</li><li>
+					Paste that in the <a href="https://caksoylar.github.io/keymap-drawer">Keymap Drawer</a>
+				</li><li>
+					Download the SVG of the keymap (right-click the preview and Save As)
+				</li><li>
+					Import the SVG here using "Import SVG"
+				</li><li>
+					Click or click-and-drag the keys on the displayed layout to add them in the order they appear on your actual keyboard.<br/>
+					The second layout preview will reflect the key order.<br/>
+					You can click on a key again to remove it, or import an SVG again to start anew.
+				</li></ul>
+				You can watch an <a href="examples/key-range-editor.mp4" target="_blank">example video</a> (48 seconds) if you'd like 
+			</div>
+			<div class="svg-old"></div>
+			<div class="svg-new"></div>
+		</div>
+	</div>
 	<script src="FileSaver.min.js"></script>
 	<script src="VialToKeymapDrawer.js"></script>
 	

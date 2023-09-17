@@ -159,7 +159,7 @@ class VilToDrawer {
 			}
 		}
 	}
-	public static function run(opt:VilToDrawerOpt):DrawerKeymap {
+	public static function runTxt(opt:VilToDrawerOpt):String {
 		var vkm = opt.root;
 		//
 		inline function getLayerName(li:Int) {
@@ -170,6 +170,13 @@ class VilToDrawer {
 		// layer -> keys[]
 		var vLayers:Array<Array<VialKeyInfo>> = isVial ? procVialLayers(opt) : procViaLayers(opt);
 		postProcLayers(vLayers, opt);
+		if (opt.outKeys != null) {
+			for (vLayer in vLayers) {
+				for (kp in vLayer) {
+					opt.outKeys.push(kp);
+				}
+			}
+		}
 		
 		//
 		var dkLayers:DynamicAccess<DrawerLayer> = new DynamicAccess();
@@ -249,7 +256,7 @@ class VilToDrawer {
 		}
 		//
 		var dCombos:Array<DrawerCombo> = [];
-		if (vkm.combo != null) for (vCombo in vkm.combo) {
+		if (vkm.combo != null && opt.combos) for (vCombo in vkm.combo) {
 			var iResult = vCombo.length - 1;
 			var inKeys = [];
 			for (i in 0 ... iResult) if (vCombo[i].isValid()) inKeys.push(vCombo[i]);
@@ -291,14 +298,42 @@ class VilToDrawer {
 			};
 		}
 		if (opt.qmkLayout != null && opt.qmkLayout != "") dkm.layout.qmk_layout = opt.qmkLayout;
-		return dkm;
-	}
-	public static function runTxt(opt:VilToDrawerOpt) {
-		var dkm = run(opt);
-		if (needsHxOrder) {
-			return tools.JsonPrinterWithOrder.print(dkm, null, "  ");
+		
+		if (opt.yamlLike) {
+			var rxId = ~/^[_a-zA-Z][_a-zA-Z0-9]*$/;
+			function idOrJson(val:Any) {
+				if (val is String && rxId.match(val)) return val;
+				return Json.stringify(val);
+			}
+			var yb = new StringBuf();
+			yb.add('layout: ' + Json.stringify(dkm.layout) + '\n');
+			yb.add('layers:\n');
+			for (ln in layerNames) {
+				yb.add('  ' + idOrJson(ln) + ':\n');
+				for (key in dkm.layers[ln]) {
+					yb.add('    - ' + idOrJson(key) + '\n');
+				}
+			}
+			if (dkm.combos != null && dkm.combos.length > 0) {
+				yb.add('combos:\n');
+				for (combo in dkm.combos) {
+					yb.add('  - ' + idOrJson(combo) + '\n');
+				}
+			}
+			for (fd in Reflect.fields(dkm)) {
+				switch (fd) {
+					case "layout", "layers", "combos": continue;
+				}
+				yb.add('fd: ' + Json.stringify(Reflect.field(dkm, fd)) + '\n');
+			}
+			return yb.toString();
+		} else {
+			if (needsHxOrder) {
+				return tools.JsonPrinterWithOrder.print(dkm, null, "  ");
+			} else {
+				return Json.stringify(dkm, null, "  ");
+			}
 		}
-		return Json.stringify(dkm, null, "  ");
 	}
 }
 typedef VialKeyInfo = {

@@ -6,14 +6,15 @@ import haxe.DynamicAccess;
  * @author YellowAfterlife
  */
 typedef DrawerKeymap = {
-	var layout:{
-		var qmk_keyboard:String;
-		var?qmk_layout:String;
-	};
+	var layout:DrawerKeymapLayout;
 	var layers:DynamicAccess<DrawerLayer>;
 	var?combos:Array<DrawerCombo>;
 	var?draw_config:DrawerConfig;
 }
+typedef DrawerKeymapLayout = {
+	var qmk_keyboard:String;
+	var?qmk_layout:String;
+};
 typedef DrawerConfig = {
 	var svg_extra_style:String;
 }

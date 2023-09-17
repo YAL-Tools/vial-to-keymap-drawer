@@ -5,6 +5,7 @@ import haxe.Json;
 import tools.ERegTools;
 import vial.VialKeymap;
 import vial.VialKey;
+import VilToDrawer;
 using StringTools;
 using tools.ERegTools;
 
@@ -28,6 +29,11 @@ class VilToDrawerOpt {
 	public var rangeDefs:Array<VilToDrawerRangeDef> = [];
 	public var keyOverrides:Array<VilToDrawerKeyOverride> = [];
 	public var showKeyPos = false;
+	public var yamlLike = true;
+	
+	public var combos = true;
+	public var outKeys:Array<VialKeyInfo> = null;
+	
 	public function new() {}
 	
 	public dynamic function log(level:String, v:Any) {
@@ -119,7 +125,7 @@ class VilToDrawerOpt {
 		+ "(\\d+),\\s*"
 		+ "(\\d+)\\s*"
 		+ "(?:" + "\\-\\s*" + "(\\d+)" + "\\s*" + ")?"
-	+ "^", "gm");
+	+ "$", "gm");
 	public function parseRangeDefs(txt:String) {
 		ERegTools.each(rxRangeDef, txt, function(rx:EReg) {
 			var col = Std.parseInt(rx.matched(2));
