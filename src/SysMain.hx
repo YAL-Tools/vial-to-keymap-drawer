@@ -48,7 +48,7 @@ class SysMain {
 			config.yamlLike = false;
 		}, [
 			"Outputs strict JSON instead of YAML"
-		]);
+		]),
 		
 		new CommandLineOption("keyboard", ["name"], function(val) {
 			config.qmkKeyboard = val;

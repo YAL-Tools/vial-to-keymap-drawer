@@ -265,6 +265,8 @@ class VilToDrawer {
 			if (!cResult.isValid()) continue;
 			
 			for (li => vKeys in vLayers) {
+				var ln = getLayerName(li);
+				if (!dkLayers.exists(ln)) continue;
 				var keyPos = [];
 				for (key in inKeys) {
 					var kp = -1;
@@ -280,7 +282,7 @@ class VilToDrawer {
 				dCombos.push({
 					p: keyPos,
 					k: cResult.toDrawerKey(opt),
-					l: [getLayerName(li)],
+					l: [ln],
 				});
 			}
 		}
