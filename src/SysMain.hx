@@ -44,6 +44,11 @@ class SysMain {
 		new CommandLineOption("via", ["path"], function(path) {
 			config.parseVil(getText(path));
 		}, "Specifies a VIA .json file to convert"),
+		new CommandLineOption("force-json", [], function() {
+			config.yamlLike = false;
+		}, [
+			"Outputs strict JSON instead of YAML"
+		]);
 		
 		new CommandLineOption("keyboard", ["name"], function(val) {
 			config.qmkKeyboard = val;

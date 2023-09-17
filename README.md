@@ -1,14 +1,15 @@
 # Vial layout to Keymap Drawer converter
 
 **Quick links:** [web version](https://yal-tools.github.io/vial-to-keymap-drawer/)
-· [pre-built binaries](https://yellowafterlife.itch.io/vial-to-keymap-drawer)
+· [itch](https://yellowafterlife.itch.io/vial-to-keymap-drawer) (for donations and pre-built binaries)
 
 Takes your Vial `.vil` layouts and converts them to YAML that you can pass to
 [keymap-drawer](https://github.com/caksoylar/keymap-drawer)
 to render your layout to SVG/PNG images that you can show to people instead
 of taking screenshots of Vial configurator.
 
-Also lets you label your layers and keys to make the keymap easier to read.
+Also lets you label your layers/keys to make the keymap easier to read
+and displays combos/tap dances.
 
 ![](example.svg)
 
@@ -17,9 +18,13 @@ Also lets you label your layers and keys to make the keymap easier to read.
 Apparently the order in which Vial stores keys in `.vil` files does not necessarily match up
 with how keys are defined in QMK, therefore the keys may appear out of order, depending on the keyboard.
 
-For this I am giving you a couple checkboxes for common oddities and ability to move a key based on row-column.
+And if your keyboard has optional keys (like a wide LShift vs narrow LShift + extra key), the way those are represented is not standardized either - they could be set to `-1`, or just left as blanks in the layout file.
 
-Please accept my condolences in advance, but good news - you'll only need to do this once per keyboard.  
+For this I'm giving you a bunch of tools to deal with common and uncommon mishaps -
+from simple (get rid of extra blank/`-1` keys, auto-fix key order in split Vial keyboards)
+to advanced (specify key order in a [visual editor](./docs/examples/key-range-editor.mp4) or hand-write key locations to swap or pick).
+
+This makes this tool slightly less entry-level, but good news - you'll only need to do this once per keyboard.  
 Perhaps contribute an example `.vil` + `.json` if it's a particularly quirky one?
 
 ## Using
