@@ -223,7 +223,7 @@ Main.loadSample = function(name) {
 	if(name == null) {
 		name = "yal-sofle";
 	}
-	var sfx = "?t=" + "2023-09-17--20-17-18";
+	var sfx = "?t=" + "2023-09-21--22-23-33";
 	var rs = new haxe_http_HttpJs("examples/" + name + ".json" + sfx);
 	rs.onData = function(s) {
 		Main.applySettings(JSON.parse(s));
@@ -2785,7 +2785,7 @@ Array.__name__ = true;
 Date.prototype.__class__ = Date;
 Date.__name__ = "Date";
 js_Boot.__toStr = ({ }).toString;
-Main.buildDate = "2023-09-17--20-17-18";
+Main.buildDate = "2023-09-21--22-23-33";
 Main.fdVil = window.document.getElementById("vil");
 Main.fdOut = window.document.getElementById("out");
 Main.fdLog = window.document.getElementById("log");
@@ -3653,3 +3653,4 @@ web_KeyRangeCreator.keyOrder = [];
 web_KeyRangeCreator.svgMouseDown = false;
 Main.main();
 })(typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);
+

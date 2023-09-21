@@ -1,87 +1,127 @@
 body {
-    background-color: #899FC6;
-	font: 15px sans-serif;
-	line-height: 1.5;
+  background-color: #899FC6;
+  font: 15px sans-serif;
+  line-height: 1.5;
 }
 main {
-	background-color: white;
-	max-width: 640px;
-	margin: 0 auto;
-	padding: 0.5em;
+  position: relative;
+  background-color: white;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0.5em;
 }
 main h1 {
-	margin: 0;
+  margin: 0;
 }
 main label:not(.inline) {
-	display: block;
+  display: block;
 }
 main input[type="text"],
 main input[type="file"],
 main select:not(.inline),
 main textarea {
-	width: 100%;
-	box-sizing: border-box;
+  width: 100%;
+  box-sizing: border-box;
 }
-textarea.prop {
-	font-family: sans-serif;
+main textarea.prop {
+  font-family: sans-serif;
 }
 main textarea {
-	resize: vertical;
+  resize: vertical;
 }
-#vil-form {
-	margin-bottom: 0.25em;
+main #vil-form {
+  margin-bottom: 0.25em;
 }
-main input[type="button"], main select {
-	padding: 0.2em 0.6em;
+main details {
+  padding: 0.2em 0.5em;
+  margin: 0.5em 0;
+  border: 1px dashed #ccc;
 }
-/*#vil {
-	height: 20vh;
+main details > summary {
+  padding-left: 0.5em;
 }
-#out {
-	height: 60vh;
-}*/
-details {
-	padding: 0.2em 0.5em;
-	margin: 0.5em 0;
-	border: 1px dashed #ccc;
+input[type="text"],
+textarea {
+  padding: 0.25em 0.4em;
 }
-details > summary {
-	padding-left: 0.5em;
+input[type="button"],
+select {
+  padding: 0.2em 0.6em;
 }
-
 #key-range-editor {
-	position: fixed;
-	inset: 0.5em;
-	background: white;
-	border: 1px solid #444;
-	box-shadow: 0 0 1em rgba(0, 0, 0, 0.1);
-	display: flex;
+  position: fixed;
+  inset: 0.5em;
+  background: white;
+  border: 1px solid #444;
+  box-shadow: 0 0 1em rgba(0, 0, 0, 0.1);
+  display: flex;
 }
 #key-range-editor .sidebar {
-	width: 8em;
-	background: #f0f0f0;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden auto;
-	padding: 0.3em;
+  width: 8em;
+  background: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+  padding: 0.3em;
 }
 #key-range-editor .sidebar input {
-	margin-bottom: 0.3em;
+  margin-bottom: 0.3em;
 }
 #key-range-editor .sidebar #key-range-close {
-	margin-top: 0.3em;
-	margin-bottom: 0;
+  margin-top: 0.3em;
+  margin-bottom: 0;
 }
 #key-range-editor .sidebar textarea {
-	flex-grow: 1;
+  flex-grow: 1;
 }
 #key-range-editor .svg-ctr {
-	flex-grow: 1;
-	overflow-y: auto;
+  flex-grow: 1;
+  overflow-y: auto;
 }
 #key-range-editor .howto {
-	padding: 0.5em;
+  padding: 0.5em;
 }
 #key-range-editor .svg-ctr svg {
-	max-width: 100%;
+  max-width: 100%;
+}
+body.night {
+  background: #405070;
+  color: white;
+}
+body.night a {
+  color: #9DEC76;
+}
+body.night a:visited {
+  color: #7ef0ff;
+}
+body.night hr {
+  border-color: #899FC6;
+}
+body.night input[type="text"],
+body.night textarea,
+body.night select {
+  background: black;
+  color: white;
+  border: 1px solid #899FC6;
+}
+body.night input[type="button"] {
+  background: #283248;
+  border: 1px solid #899FC6;
+  color: white;
+  padding: 0.25em 0.6em;
+}
+body.night input[type="button"]:hover {
+  background: #899FC6;
+}
+body.night main,
+body.night #key-range-editor .sidebar {
+  background: #1A202D;
+}
+body.night #key-range-editor {
+  background: #899FC6;
+}
+label[for="night-mode"] {
+  position: absolute;
+  right: 0.5em;
+  top: 0.5em;
 }

@@ -1,0 +1,136 @@
+body {
+    background-color: #899FC6;
+	font: 15px sans-serif;
+	line-height: 1.5;
+}
+main {
+	position: relative;
+	background-color: white;
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 0.5em;
+	
+	h1 {
+		margin: 0;
+	}
+	label:not(.inline) {
+		display: block;
+	}
+	input[type="text"],
+	input[type="file"],
+	select:not(.inline),
+	textarea {
+		width: 100%;
+		box-sizing: border-box;
+	}
+	textarea.prop {
+		font-family: sans-serif;
+	}
+	textarea {
+		resize: vertical;
+	}
+	#vil-form {
+		margin-bottom: 0.25em;
+	}
+	details {
+		padding: 0.2em 0.5em;
+		margin: 0.5em 0;
+		border: 1px dashed #ccc;
+		> summary {
+			padding-left: 0.5em;
+		}
+	}
+}
+input[type="text"],
+	textarea {
+		padding: 0.25em 0.4em;
+	}
+	input[type="button"], select {
+		padding: 0.2em 0.6em;
+	}
+
+#key-range-editor {
+	position: fixed;
+	inset: 0.5em;
+	background: white;
+	border: 1px solid #444;
+	box-shadow: 0 0 1em rgba(0, 0, 0, 0.1);
+	display: flex;
+	
+	.sidebar {
+		width: 8em;
+		background: #f0f0f0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden auto;
+		padding: 0.3em;
+	}
+	.sidebar input {
+		margin-bottom: 0.3em;
+	}
+	.sidebar #key-range-close {
+		margin-top: 0.3em;
+		margin-bottom: 0;
+	}
+	.sidebar textarea {
+		flex-grow: 1;
+	}
+	.svg-ctr {
+		flex-grow: 1;
+		overflow-y: auto;
+	}
+	.howto {
+		padding: 0.5em;
+	}
+	.svg-ctr svg {
+		max-width: 100%;
+	}
+}
+
+body.night {
+	background: #405070;
+	color: white;
+	
+	a {
+		color: #9DEC76;
+	}
+	a:visited {
+		color: #7ef0ff;
+	}
+	.control-border() {
+		border: 1px solid #899FC6;
+	}
+	hr {
+		border-color: #899FC6;
+	}
+	
+	input[type="text"],
+	textarea,
+	select {
+		background: black;
+		color: white;
+		.control-border();
+	}
+	
+	input[type="button"] {
+		background: #283248;
+		.control-border();
+		color: white;
+		padding: 0.25em 0.6em;
+		&:hover {
+			background: #899FC6;
+		}
+	}
+	main, #key-range-editor .sidebar {
+		background: #1A202D;
+	}
+	#key-range-editor {
+		background: #899FC6;
+	}
+}
+
+label[for="night-mode"] {
+	position: absolute;
+	right: 0.5em;
+	top: 0.5em;
+}

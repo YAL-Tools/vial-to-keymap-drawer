@@ -8,6 +8,26 @@
 </head>
 <body>
 	<main>
+		<label for="night-mode">
+			<input id="night-mode" type="checkbox" class="transient" />night mode
+		</label>
+		<script>
+		(function() {
+			if (!window.localStorage) return;
+			var cb = document.getElementById("night-mode");
+			var key = "VialToKeymapDrawer.nightMode";
+			if (localStorage.getItem(key) == "true") {
+				cb.setAttribute("checked", "");
+				document.body.classList.add("night");
+			}
+			cb.onchange = function() {
+				if (cb.checked) {
+					document.body.classList.add("night");
+				} else document.body.classList.remove("night");
+				localStorage.setItem(key, cb.checked ? "true" : "false");
+			}
+		})();
+		</script>
 		<h1>Vial To Keymap Drawer</h1>
 		<div style="margin-bottom: 0.5em">
 		This tool takes your Vial .vil layouts and converts them to YAML files that
@@ -130,7 +150,7 @@
 		<textarea id="log" rows="6" class="transient prop"></textarea>
 		
 		<hr/>
-		A tool by YellowAfterlife.<br/>
+		A tool by <a href="https://yal.cc">YellowAfterlife</a>.<br/>
 		You can
 		<a href="https://yellowafterlife.itch.io/vial-to-keymap-drawer/purchase">give me a few dollars</a>
 		for making this.<br/>
