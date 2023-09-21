@@ -94,7 +94,8 @@ body.night a {
 body.night a:visited {
   color: #7ef0ff;
 }
-body.night hr {
+body.night hr,
+body.night details {
   border-color: #899FC6;
 }
 body.night input[type="text"],
