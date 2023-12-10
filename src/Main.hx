@@ -47,6 +47,7 @@ class Main {
 	static var fdKeyboard:InputElement = find("keyboard");
 	static var fdLayout:InputElement = find("layout");
 	static var fdMoveDefs:TextAreaElement = find("move-defs");
+	static var fdEncoderDefs:TextAreaElement = find("encoder-defs");
 	public static var fdKeyRanges:TextAreaElement = find("key-ranges");
 	
 	static var wndKeyRangeEditor:Window = null;
@@ -89,6 +90,7 @@ class Main {
 			opt.mirrorRightHalf = cbMirrorRightHalf.checked;
 			opt.parseMoveDefs(fdMoveDefs.value);
 			opt.parseRangeDefs(fdKeyRanges.value);
+			opt.parseEncoderDefs(fdEncoderDefs.value);
 			opt.showKeyPos = cbDebugKeyPos.checked;
 		} else {
 			opt.combos = false;

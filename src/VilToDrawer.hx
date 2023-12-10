@@ -18,8 +18,8 @@ class VilToDrawer {
 	#else
 	public static inline var needsHxOrder:Bool = true;
 	#end
-	static function keysToInfos(keys:Array<VialKey>, layer:Int, row:Int, ind:Int) {
-		var infos = [];
+	static function keysToInfos(keys:Array<VialKey>, layer:Int, row:Int, ind:Int):Array<VialKeyInfo> {
+		var infos:Array<VialKeyInfo> = [];
 		for (i => key in keys) {
 			infos.push({
 				layer: layer,
@@ -127,6 +127,13 @@ class VilToDrawer {
 		return vLayers;
 	}
 	static function postProcLayers(vLayers:Array<Array<VialKeyInfo>>, opt:VilToDrawerOpt) {
+		for (encDef in opt.encoderDefs) {
+			for (vLayer in vLayers) {
+				for (ki in vLayer.filter(ki -> ki.col == encDef.col && ki.row == encDef.row)) {
+					ki.encoder = encDef.index;
+				}
+			}
+		}
 		var omitNonKeys = opt.omitNonKeys;
 		if (omitNonKeys != 0) {
 			var k = vLayers[0].length;
@@ -182,11 +189,13 @@ class VilToDrawer {
 		var dkLayers:DynamicAccess<DrawerLayer> = new DynamicAccess();
 		var dkLayerList:Array<DrawerLayer> = [];
 		var layerNames = [];
+		var usesEncoders = false;
 		for (li => vkeys in vLayers) {
 			if (opt.includeLayers.length > 0 && !opt.includeLayers.contains(li)) continue;
 			var dkeys = [];
 			for (k => kc in vkeys) {
-				var dk:DrawerKey = kc.key.toDrawerKey(opt);
+				var dk:DrawerKey = kc.key.toDrawerKey(opt, kc.encoder != null);
+				dk = dk.postproc(opt);
 				// is this a held key?
 				var mo = "MO(" + li + ")";
 				var lts = "LT" + li + "(";
@@ -200,17 +209,32 @@ class VilToDrawer {
 						break;
 					}
 				}
+				
 				if (held) {
 					var dkx = dk.toExt();
 					dkx.type = "held";
 					if (dkx.t == VialKeyNames.map["KC_TRNS"]) dkx.t = "";
 					dk = dkx;
 				}
+				
+				if (kc.encoder != null && isVial) {
+					var encPair = opt.root.encoder_layout[kc.layer][kc.encoder];
+					var encDn = encPair[0].toDrawerKey(opt, true).postproc(opt).toFlat(DrawerKeyAction.Tap);
+					var encUp = encPair[1].toDrawerKey(opt, true).postproc(opt).toFlat(DrawerKeyAction.Tap);
+					var dkx = dk.toExt();
+					dkx.s = "↑" + encUp;
+					dkx.h = "↓" + encDn;
+					dkx.type = "encoder";
+					usesEncoders = true;
+					dk = dkx;
+				}
+				
 				if (opt.showKeyPos) {
 					var dkx = dk.toExt();
 					dkx.s = kc.row + "," + kc.col;
 					dk = dkx;
 				}
+				
 				dkeys.push(dk);
 			}
 			var ln = getLayerName(li);
@@ -221,6 +245,16 @@ class VilToDrawer {
 		if (needsHxOrder) dkLayers["__hxOrder__"] = cast layerNames;
 		//
 		var extraStyle:Array<String> = [];
+		if (usesEncoders) {
+			//trace("enc!");
+			/*extraStyle = extraStyle.concat([
+				"rect.encoder {",
+				"\t" + "rx: 1024;",
+				"\t" + "ry: 1024;",
+				"\t" + "transform: scale(1.2);",
+				"}",
+			]);*/
+		}
 		if (opt.markNonKeysAs != null) {
 			var found = false;
 			var trns = VialKeyNames.map["KC_TRNS"];
@@ -279,9 +313,11 @@ class VilToDrawer {
 					if (kp >= 0) keyPos.push(kp); else break;
 				}
 				if (keyPos.length < inKeys.length) continue;
+				var dk = cResult.toDrawerKey(opt);
+				dk = dk.postproc(opt);
 				dCombos.push({
 					p: keyPos,
-					k: cResult.toDrawerKey(opt),
+					k: dk,
 					l: [ln],
 				});
 			}
@@ -343,5 +379,6 @@ typedef VialKeyInfo = {
 	row:Int,
 	col:Int,
 	ind:Int,
+	?encoder:Int,
 	key:VialKey
 };

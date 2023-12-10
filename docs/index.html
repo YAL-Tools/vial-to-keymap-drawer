@@ -108,6 +108,8 @@
 			OR enter key ranges to pick from the source file:<br/>
 			<textarea id="key-ranges" rows="4" placeholder="0,0-3&#10;2,0-3&#10;1,0-3&#10;3,0-3"></textarea>
 			
+			Encoder "key" locations (row, col => index):<br/>
+			<textarea id="encoder-defs" rows="4" placeholder="1,2 => 0"></textarea>
 			
 			<label>
 				<input type="checkbox" class="transient" id="show-key-pos"/>
@@ -120,7 +122,7 @@
 			Layer names:<br/>
 		<textarea id="layer-names" rows="4" placeholder="DEF&#10;NAV&#10;MEDIA (and other stuff)&#10;TITLE: Subtitle"></textarea>
 			Custom key labels (layer, row, col => newkey):<br/>
-			<textarea id="key-overrides" rows="4" placeholder="0,1,2 => COOL"></textarea>
+			<textarea id="key-overrides" rows="4" placeholder='0,1,2 => COOL&#10;"F22" => NEAT'></textarea>
 			Mark keys that are disabled on all layers as:
 			<select id="mark-non-keys">
 				<option value="" selected>(don't mark)</option>

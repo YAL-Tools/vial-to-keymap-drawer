@@ -25,6 +25,7 @@ main textarea {
 }
 main textarea.prop {
   font-family: sans-serif;
+  font-size: 15px;
 }
 main textarea {
   resize: vertical;

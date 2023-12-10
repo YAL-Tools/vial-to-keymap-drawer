@@ -45,6 +45,27 @@ abstract DrawerKey(Dynamic)
 		if (isFlat()) return this;
 		return Reflect.field(this, a);
 	}
+	function postproc_1(s:String, opt:VilToDrawerOpt) {
+		if (s == null) return null;
+		var lqs = s.toLowerCase();
+		return opt.keyNames.exists(lqs) ? opt.keyNames[lqs] : s;
+	}
+	public function postproc(opt:VilToDrawerOpt):DrawerKey {
+		if (isFlat()) return postproc_1(this, opt);
+		var ext:DrawerKeyExt = this;
+		if (ext.s != null && StringTools.endsWith(ext.s, "+")) {
+			var lqs = (ext.s + ext.t).toLowerCase();
+			if (opt.keyNames.exists(lqs)) {
+				ext.t = opt.keyNames[lqs];
+				ext.s = "";
+				return ext;
+			}
+		}
+		if (ext.t != null) ext.t = postproc_1(ext.t, opt);
+		if (ext.h != null) ext.h = postproc_1(ext.h, opt);
+		if (ext.s != null) ext.s = postproc_1(ext.s, opt);
+		return ext;
+	}
 }
 enum abstract DrawerKeyAction(String) to String {
 	var Tap = "t";

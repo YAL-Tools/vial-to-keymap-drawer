@@ -6,3 +6,5 @@
 /bin/*.ndll
 /bin/*.zip
 /bin/*.svg
+/bin/*.png
+/bin/yal-sofle-*.yaml

@@ -13,7 +13,7 @@ typedef VialKeymap = {
 	var version:Int;
 	var uid:Int;
 	var layout:Array<Array<Array<VialKey>>>;
-	var encoder_layout:Array<Array<Array<String>>>;
+	var encoder_layout:Array<Array<Array<VialKey>>>;
 	var layout_options:Int;
 	var vial_protocol:Int;
 	var via_protocol:Int;

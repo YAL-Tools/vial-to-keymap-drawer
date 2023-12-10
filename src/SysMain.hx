@@ -24,7 +24,7 @@ class SysMain {
 	static function getText(path:String) {
 		try {
 			var text = File.getContent(path);
-			text = text.replace("\\r", "");
+			text = text.replace("\r", "");
 			return text;
 		} catch (x:Dynamic) {
 			error('Failed to read "$path":' + x);
@@ -118,6 +118,17 @@ class SysMain {
 			"For example,",
 			"1,2 => 0,5",
 			"Would move third key from second row to sixth position in the first row.",
+			"Rows and columns are counted as they appear in .vil",
+		]),
+		new CommandLineOption("encoder-defs", ["path"], function(path) {
+			config.parseEncoderDefs(getText(path));
+		}, [
+			"Specifies a file to load encoder definitions from for Vial.",
+			"One per line, formatted as following:",
+			"row, col => index",
+			"For example,",
+			"1,2 => 0",
+			"Would attach first encoder's mappings to third key from second row.",
 			"Rows and columns are counted as they appear in .vil",
 		]),
 		new CommandLineOption("key-ranges", ["path"], function(path) {

@@ -1,4 +1,4 @@
 DEF
-SYM (toggle layer)
 NAV
-MISC: F-keys and numpad
+ALT
+NUM

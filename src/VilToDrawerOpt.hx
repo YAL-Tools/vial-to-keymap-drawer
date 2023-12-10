@@ -27,7 +27,10 @@ class VilToDrawerOpt {
 	public var layerNames:Array<VilToDrawerLayerName> = [];
 	public var moveDefs:Array<VilToDrawerMoveDef> = [];
 	public var rangeDefs:Array<VilToDrawerRangeDef> = [];
+	public var encoderDefs:Array<VilToDrawerEncoderDef> = [];
 	public var keyOverrides:Array<VilToDrawerKeyOverride> = [];
+	/**  */
+	public var keyNames:Map<String, String> = new Map();
 	public var showKeyPos = false;
 	public var yamlLike = true;
 	
@@ -155,6 +158,7 @@ class VilToDrawerOpt {
 	}
 	
 	static var rxKeyOverride = ~/^\s*(\d+),\s*(\d+),\s*(\d+)\s*=>\s*(.+)/gm;
+	static var rxKeyOverrideName = ~/^\s*(".*?[^\\]")\s*=>\s*(.+)/gm;
 	public function parseKeyOverrides(txt:String) {
 		ERegTools.each(rxKeyOverride, txt, function(rx:EReg) {
 			keyOverrides.push({
@@ -162,6 +166,27 @@ class VilToDrawerOpt {
 				row: Std.parseInt(rx.matched(2)),
 				col: Std.parseInt(rx.matched(3)),
 				key: rx.matched(4),
+				rule: rx.matched(0),
+			});
+		});
+		ERegTools.each(rxKeyOverrideName, txt, function(rx:EReg) {
+			var key = try {
+				Json.parse(rx.matched(1));
+			} catch (x:Dynamic) {
+				error("Couldn't parse " + rx.matched(1) + ": " + x);
+				return;
+			}
+			keyNames[key.toLowerCase()] = rx.matched(2);
+		});
+	}
+	
+	static var rxEncoderDef = ~/^\s*(\d+),\s*(\d+)\s*=>\s*(\d+)/gm;
+	public function parseEncoderDefs(txt:String) {
+		ERegTools.each(rxEncoderDef, txt, function(rx:EReg) {
+			encoderDefs.push({
+				row: Std.parseInt(rx.matched(1)),
+				col: Std.parseInt(rx.matched(2)),
+				index: Std.parseInt(rx.matched(3)),
 				rule: rx.matched(0),
 			});
 		});
@@ -184,6 +209,12 @@ typedef VilToDrawerMoveDef = {
 	var dstRow:Int;
 	var dstCol:Int;
 	var count:Int;
+	var rule:String;
+};
+typedef VilToDrawerEncoderDef = {
+	var row:Int;
+	var col:Int;
+	var index:Int;
 	var rule:String;
 };
 typedef VilToDrawerRangeDef = {
