@@ -82,7 +82,7 @@ class Main {
 		};
 		
 		opt.qmkKeyboard = fdKeyboard.value.trim();
-		opt.qmkLayout = fdLayout.value.trim();
+		opt.layoutName = fdLayout.value.trim();
 		opt.parseVil(fdVil.value);
 		
 		if (!forKeyRange) {

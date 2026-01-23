@@ -13,7 +13,7 @@ typedef DrawerKeymap = {
 }
 typedef DrawerKeymapLayout = {
 	var qmk_keyboard:String;
-	var?qmk_layout:String;
+	var?layout_name:String;
 };
 typedef DrawerConfig = {
 	var svg_extra_style:String;

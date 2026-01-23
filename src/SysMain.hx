@@ -59,7 +59,7 @@ class SysMain {
 			"Find the name in configurator: https://config.qmk.fm/",
 		]),
 		new CommandLineOption("layout", ["name"], function(val) {
-			config.qmkLayout = val;
+			config.layoutName = val;
 		}, [
 			"Specifies a physical layout to use, if keyboard has multiple.",
 			"For example, corne_rotated has a LAYOUT_split_3x5_3.",
