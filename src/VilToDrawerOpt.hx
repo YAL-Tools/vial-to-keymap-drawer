@@ -17,7 +17,7 @@ class VilToDrawerOpt {
 	public var root:VialKeymap;
 	public var isVIA:Bool;
 	public var qmkKeyboard:String = null;
-	public var qmkLayout:String = null;
+	public var layoutName:String = null;
 	public var halfAfterHalf = false;
 	public var mirrorRightHalf = false;
 	public var omitNonKeys = 0;

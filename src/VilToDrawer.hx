@@ -335,7 +335,7 @@ class VilToDrawer {
 				svg_extra_style: extraStyle.join("\n"),
 			};
 		}
-		if (opt.qmkLayout != null && opt.qmkLayout != "") dkm.layout.qmk_layout = opt.qmkLayout;
+		if (opt.layoutName != null && opt.layoutName != "") dkm.layout.layout_name = opt.layoutName;
 		
 		if (opt.yamlLike) {
 			var rxId = ~/^[_a-zA-Z][_a-zA-Z0-9]*$/;
